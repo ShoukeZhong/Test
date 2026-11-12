@@ -1,13 +1,21 @@
 name: android-apk
 on:
   push:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
+      - run: mkdir -p ci-out
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -19,7 +27,7 @@ jobs:
 
       # 你的筆電不用裝 Flutter：android/ 資料夾在雲端自動產生
       - name: Generate android/ folder
-        run: flutter create . --platforms=android --project-name pet_overlay --org com.joker
+        run: flutter create . --platforms=android --project-name pet_overlay --org com.joker 2>&1 | tee ci-out/create.log
 
       - name: Patch AndroidManifest for overlay
         run: |
@@ -46,13 +54,55 @@ jobs:
               s = s.replace("<application", perms + "<application", 1)
               s = s.replace("</application>", service + "</application>", 1)
               open(p, "w", encoding="utf-8").write(s)
-          print(s)
+          open("ci-out/AndroidManifest.xml", "w", encoding="utf-8").write(s)
           PY
 
-      - run: flutter pub get
-      - run: flutter build apk --debug
+      - run: flutter pub get 2>&1 | tee ci-out/pub_get.log
+
+      - name: Build APK
+        id: build
+        run: flutter build apk --release 2>&1 | tee ci-out/build.log
 
       - uses: actions/upload-artifact@v4
+        if: steps.build.outcome == 'success'
         with:
           name: pet-overlay-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      # ---- 模擬器實測 ----
+      - name: Enable KVM
+        if: steps.build.outcome == 'success'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run on emulator
+        id: emu
+        if: steps.build.outcome == 'success'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          script: bash ci/emulator_test.sh
+
+      # ---- 把結果寫回 repo 的 ci-results 分支，讓 Claude 能直接讀 ----
+      - name: Publish results to ci-results branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "commit: ${GITHUB_SHA}"
+            echo "run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "build: ${{ steps.build.outcome }}"
+            echo "emulator: ${{ steps.emu.outcome }}"
+          } > ci-out/run_info.txt
+          cp build/app/outputs/flutter-apk/app-release.apk ci-out/ 2>/dev/null || true
+          cd ci-out
+          git init -q
+          git checkout -q -b ci-results
+          git add -A
+          git -c user.name=ci-bot -c user.email=ci-bot@users.noreply.github.com commit -qm "results ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-results
