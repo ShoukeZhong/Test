@@ -49,9 +49,10 @@ adb exec-out screencap -p > "$OUT/3_home_with_pet.png"
 
 adb shell dumpsys window windows > "$OUT/dumpsys_window.txt" 2>&1
 adb logcat -d > "$OUT/logcat.txt" 2>&1
-if grep -q "APPLICATION_OVERLAY" "$OUT/dumpsys_window.txt"; then
-  log "overlay window present"
+# 只認這個 App 自己的浮動視窗（SystemUI 也有 APPLICATION_OVERLAY 視窗，不能只 grep 類型）
+if grep -A4 "u0 $PKG}" "$OUT/dumpsys_window.txt" | grep -q "ty=APPLICATION_OVERLAY"; then
+  log "pet overlay window present"
   echo "PASS" > "$OUT/emulator_result.txt"
 else
-  fail "no APPLICATION_OVERLAY window in dumpsys"
+  fail "no APPLICATION_OVERLAY window owned by $PKG"
 fi
