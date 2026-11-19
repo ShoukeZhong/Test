@@ -110,8 +110,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Widget _readyView() => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const PetSprite(size: 160),
-          const SizedBox(height: 16),
+          // App 裡不再畫一隻，避免跟浮動的那隻疊在一起
           const Text(
             '寵物已經浮在畫面上了。\n切到 LINE 或任何 App 都看得到，可以用手指拖著走。',
             textAlign: TextAlign.center,
