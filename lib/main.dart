@@ -17,14 +17,53 @@ void overlayMain() {
   ));
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
-  Future<void> _show() async {
-    if (!await FlutterOverlayWindow.isPermissionGranted()) {
-      final granted = await FlutterOverlayWindow.requestPermission();
-      if (granted != true) return;
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+  bool? _granted; // null = 還在檢查
+  bool _userHidden = false; // 使用者按了「收起」就不要自動再叫出來
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _sync();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // 從設定頁開完權限回來時會觸發，寵物自動出現
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _sync();
+  }
+
+  /// 有權限就自動讓寵物出現；沒有就顯示開權限的說明
+  Future<void> _sync() async {
+    if (_busy) return;
+    _busy = true;
+    try {
+      final granted = await FlutterOverlayWindow.isPermissionGranted();
+      if (mounted) setState(() => _granted = granted);
+      if (granted && !_userHidden && !await FlutterOverlayWindow.isActive()) {
+        await _showPet();
+      }
+    } finally {
+      _busy = false;
     }
+  }
+
+  Future<void> _showPet() async {
     await FlutterOverlayWindow.showOverlay(
       width: 400,
       height: 400,
@@ -36,26 +75,79 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  Future<void> _askPermission() async {
+    await FlutterOverlayWindow.requestPermission();
+    await _sync();
+  }
+
+  Future<void> _toggle(bool show) async {
+    _userHidden = !show;
+    if (show) {
+      if (!await FlutterOverlayWindow.isActive()) await _showPet();
+    } else {
+      await FlutterOverlayWindow.closeOverlay();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final granted = _granted;
     return Scaffold(
-      appBar: AppBar(title: const Text('Pet Overlay MVP')),
+      appBar: AppBar(title: const Text('Pet Overlay')),
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const PetSprite(size: 160),
-            const SizedBox(height: 24),
-            FilledButton(onPressed: _show, child: const Text('讓寵物浮在其他 App 上')),
-            TextButton(
-              onPressed: () => FlutterOverlayWindow.closeOverlay(),
-              child: const Text('收起寵物'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: granted == null
+              ? const CircularProgressIndicator()
+              : granted
+                  ? _readyView()
+                  : _needPermissionView(),
         ),
       ),
     );
   }
+
+  Widget _readyView() => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const PetSprite(size: 160),
+          const SizedBox(height: 16),
+          const Text(
+            '寵物已經浮在畫面上了。\n切到 LINE 或任何 App 都看得到，可以用手指拖著走。',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: () => _toggle(true), child: const Text('顯示寵物')),
+          TextButton(onPressed: () => _toggle(false), child: const Text('收起寵物')),
+        ],
+      );
+
+  Widget _needPermissionView() => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const PetSprite(size: 120),
+          const SizedBox(height: 16),
+          const Text('還差一步：開啟浮動權限',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          const Text(
+            '按下面的按鈕會打開「Display over other apps」清單。\n'
+            '請往下找到「Pet Overlay」，打開它的開關，再按返回。\n\n'
+            '不用打開 LINE 或其他 App——\n'
+            '只要 Pet Overlay 有權限，寵物就會出現在所有 App 上面。',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: _askPermission, child: const Text('去開啟權限')),
+          const SizedBox(height: 16),
+          const Text(
+            '小米／紅米手機：開了還是看不到的話，到 設定 → Apps → Pet Overlay → '
+            'Other permissions，把「Display pop-up windows while running in the background」設成允許。',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ],
+      );
 }
 
 /// 佔位用的寵物；之後換成 AI 生成的逐格圖

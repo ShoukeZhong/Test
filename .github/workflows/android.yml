@@ -53,7 +53,9 @@ jobs:
               )
               s = s.replace("<application", perms + "<application", 1)
               s = s.replace("</application>", service + "</application>", 1)
-              open(p, "w", encoding="utf-8").write(s)
+          # 權限清單裡顯示的 App 名稱，改成好找的「Pet Overlay」
+          s = s.replace('android:label="pet_overlay"', 'android:label="Pet Overlay"')
+          open(p, "w", encoding="utf-8").write(s)
           open("ci-out/AndroidManifest.xml", "w", encoding="utf-8").write(s)
           PY
 
