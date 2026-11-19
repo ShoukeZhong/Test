@@ -134,7 +134,7 @@ class _ControlPageState extends State<ControlPage> with WidgetsBindingObserver {
     await Store.save(p);
     if (!mounted) return;
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    final w = CatBody.bodyLength * 2.35 * p.scale, h = CatBody.bodyLength * 1.5 * p.scale + 6;
+    final w = CatBody.bodyLength * 2.6 * p.scale, h = CatBody.bodyLength * 1.5 * p.scale + 6;
     await FlutterOverlayWindow.showOverlay(
       width: (w * dpr).round(), // 這裡是實體像素（套件原始碼：showOverlay 不換算 dp）
       height: (h * dpr).round(),
