@@ -17,10 +17,11 @@ List<V2> _bodyPoints(RigFrame r) => [
       for (final l in r.legs) ...[l.knee, l.foot],
     ];
 
-/// 一邊跑一邊檢查：(1) 不穿過地板 (2) 相對於質心的移動，任何身體點每幀都不會跳
+/// 一邊跑一邊檢查：(1) 不穿過地板 (2) 扣掉「整隻貓的平移＋旋轉」後，任何身體點每幀都不會跳
 class _Watch {
   List<V2>? prev;
   V2? prevCom;
+  double prevAngle = 0;
   double worstRel = 0;
   String worstWhere = '';
   double lowest = double.infinity;
@@ -31,9 +32,10 @@ class _Watch {
     final com = p.map(f.com);
     lowest = math.min(lowest, PetBody.lowestY(f, p));
     if (prev != null && prevCom != null) {
-      final dc = com - prevCom!;
+      final da = wrapAngle(p.angle - prevAngle);
       for (var i = 0; i < pts.length; i++) {
-        final rel = (pts[i] - prev![i] - dc).length;
+        final predicted = com + (prev![i] - prevCom!).rotate(da);
+        final rel = (pts[i] - predicted).length;
         if (rel > worstRel) {
           worstRel = rel;
           worstWhere = 'point $i during $phase (mode=${w.body.mode.name})';
@@ -42,6 +44,7 @@ class _Watch {
     }
     prev = pts;
     prevCom = com;
+    prevAngle = p.angle;
   }
 }
 
@@ -75,7 +78,7 @@ void main() {
     expect((com.x - hold.x).abs(), lessThan(1.0));
     expect(com.y, lessThan(hold.y));
     expect(p.map(g.head).y, greaterThan(p.map(g.hip).y)); // 頭在上
-    expect(watch.lowest, greaterThan(-0.6));
+    expect(watch.lowest, greaterThan(-0.05));
     expect(watch.worstRel, lessThan(4));
   });
 
@@ -148,7 +151,7 @@ void main() {
     print('throw worstRel=${watch.worstRel.toStringAsFixed(2)} (${watch.worstWhere}) lowest=${watch.lowest.toStringAsFixed(2)} '
         'act=${w.sim.brain.act.name}');
     expect(landed, isTrue);
-    expect(watch.worstRel, lessThan(6)); // 甩動時轉得快，相對位移本來就大；真正的「跳」會是 10 以上
+    expect(watch.worstRel, lessThan(4));
     expect(watch.lowest, greaterThan(-1.5));
   });
 

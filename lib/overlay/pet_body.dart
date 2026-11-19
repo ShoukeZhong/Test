@@ -35,7 +35,7 @@ class PetBody {
   V2 vel = V2.zero;
   V2 _finger = V2.zero;
   V2 _grabOffset = V2.zero;
-  V2? _prevPivot;
+  final Spring _px = Spring(0), _py = Spring(0);
   V2 _pivotVel = V2.zero;
   V2 _pivotAcc = V2.zero;
   bool _justReleased = false;
@@ -83,7 +83,12 @@ class PetBody {
     _finger = finger;
     _grabOffset = hold - finger;
     pos = hold;
-    _prevPivot = null;
+    _px
+      ..x = hold.x
+      ..v = wasAir ? vel.x : 0;
+    _py
+      ..x = hold.y
+      ..v = wasAir ? vel.y : 0;
     _pivotVel = wasAir ? vel : V2.zero;
     _pivotAcc = V2.zero;
     heldT = 0;
@@ -122,20 +127,20 @@ class PetBody {
   void _held(double dt, RigFrame f, double struggle) {
     heldT += dt;
     _grabOffset = _grabOffset * math.exp(-dt / 0.12); // 約 0.3 秒把胸口移到手指下
-    var pivot = _finger + _grabOffset;
-    // 手指太低時把貓往上提，不讓身體穿過地板
-    final lowRel = lowestY(f, Placement(f.holdPoint, V2.zero, angle));
-    pivot = V2(pivot.x, math.max(pivot.y, -lowRel + 0.5));
-    if (_prevPivot != null && dt > 0) {
-      final v = (pivot - _prevPivot!) * (1 / dt);
-      var a = (v - _pivotVel) * (1 / dt);
+    final target = _finger + _grabOffset;
+
+    // 抱的位置用很短的彈簧跟著手指（約 40 ms）：觸控取樣不連續時，加速度不會爆衝
+    final vx0 = _px.v, vy0 = _py.v;
+    _px.update(target.x, 0.04, dt);
+    _py.update(target.y, 0.04, dt);
+    if (dt > 0) {
+      var a = V2((_px.v - vx0) / dt, (_py.v - vy0) / dt);
       final al = a.length;
-      if (al > 4000) a = a * (4000 / al);
-      _pivotVel = V2.lerp(_pivotVel, v, 0.5);
-      _pivotAcc = V2.lerp(_pivotAcc, a, 0.4);
+      const aMax = CatBody.gravity * 1.5; // 手再怎麼甩，貓感受到的加速度有上限〔估〕
+      if (al > aMax) a = a * (aMax / al);
+      _pivotAcc = a;
     }
-    _prevPivot = pivot;
-    pos = pivot;
+    _pivotVel = V2(_px.v, _py.v);
 
     // 物理擺：α = (r × g_eff) / (|r|² + k²) − 阻尼 + 掙扎
     final rB = f.com - f.holdPoint;
@@ -148,11 +153,21 @@ class PetBody {
       final rl2 = r.x * r.x + r.y * r.y;
       final w0 = math.sqrt(CatBody.gravity * math.sqrt(rl2) / (rl2 + k2));
       var alpha = r.cross(gEff) / (rl2 + k2);
-      alpha -= 2 * 0.25 * w0 * omega; // 阻尼比 0.25〔估〕
+      alpha -= 2 * 0.45 * w0 * omega; // 阻尼比 0.45：貓會用肌肉穩住身體〔估〕
       alpha += struggle * w0 * w0 * 0.35 * (math.sin(heldT * 7.3) + 0.6 * math.sin(heldT * 12.1 + 1));
-      omega = clampD(omega + alpha * h, -15, 15);
+      omega = clampD(omega + alpha * h, -10, 10);
       angle += omega * h;
     }
+
+    // 手指太低時把貓往上提，不讓身體穿過地板（用這一幀的骨架和角度算，畫出來一定在地板上）
+    final lowRel = lowestY(f, Placement(f.holdPoint, V2.zero, angle));
+    final minY = -lowRel + 0.5;
+    if (_py.x < minY) {
+      _py
+        ..x = minY
+        ..v = math.max(0.0, _py.v);
+    }
+    pos = V2(_px.x, _py.x);
     placement = Placement(f.holdPoint, pos, angle);
   }
 

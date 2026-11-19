@@ -54,8 +54,8 @@ wait_log() {  # wait_log 'pattern' 秒數
   return 1
 }
 
-# 等貓停下來（vx≈0），回傳某個身體部位的實體像素座標 "X Y"
-still_pos() {  # still_pos back|head
+# 等貓停下來（vx≈0），回傳最新一行 tick 紀錄
+still_line() {
   local line=""
   for i in $(seq 1 40); do
     line=$(plog | grep '\] tick ' | tail -1)
@@ -67,8 +67,10 @@ still_pos() {  # still_pos back|head
     sleep 1
   done
   echo "$line" >> "$OUT/emulator_steps.txt"
-  echo "$line" | grep -oE "$1=[0-9]+,[0-9]+" | head -1 | cut -d= -f2 | tr ',' ' '
+  echo "$line"
 }
+# 從 tick 紀錄取出身體部位的實體像素座標 "X Y"
+xy_of() { echo "$2" | grep -oE "$1=-?[0-9]+,-?[0-9]+" | head -1 | cut -d= -f2 | tr ',' ' '; }
 
 adb wait-for-device
 log "install"
@@ -76,6 +78,9 @@ adb install -r "$APK" >> "$OUT/emulator_steps.txt" 2>&1 || { result "FAIL instal
 for p in POST_NOTIFICATIONS RECORD_AUDIO CAMERA; do adb shell pm grant "$PKG" android.permission.$p 2>/dev/null || true; done
 adb shell appops set "$PKG" SYSTEM_ALERT_WINDOW allow
 adb shell wm size >> "$OUT/emulator_steps.txt"; adb shell wm density >> "$OUT/emulator_steps.txt"
+SIZE=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1)
+SW=${SIZE%x*}; SH=${SIZE#*x}
+log "screen ${SW}x${SH}"
 adb shell input 2>&1 | grep -iE "motionevent|draganddrop" >> "$OUT/emulator_steps.txt" || true
 adb logcat -c
 
@@ -102,11 +107,15 @@ fi
 
 # ---- T3 ----
 log "T3 stroke the back"
-xy=$(still_pos back)
+line=$(still_line)
+xy=$(xy_of back "$line")
 if [ -n "$xy" ]; then
   set -- $xy; X=$1; Y=$2
-  log "back at $X,$Y"
-  for k in 1 2 3; do adb shell input swipe $((X-45)) $Y $((X+45)) $Y 700; sleep 0.3; done
+  hx=$(xy_of head "$line" | cut -d' ' -f1)
+  D=$(( (hx > X ? hx - X : X - hx) * 7 / 10 ))   # 背中間到頭的距離 ×0.7：一直在背上
+  [ "$D" -lt 10 ] && D=10
+  log "back at $X,$Y span ±$D"
+  for k in 1 2 3; do adb shell input swipe $((X-D)) $Y $((X+D)) $Y 700; sleep 0.3; done
   sleep 1; shot 5_stroke
   plog > "$OUT/logcat_t3.txt"
   if grep -q 'touch stroke' "$OUT/logcat_t3.txt" && grep -q 'act=petted' "$OUT/logcat_t3.txt"; then result "PASS T3 stroke -> petted"; else result "FAIL T3 stroke not detected"; fi
@@ -117,7 +126,7 @@ fi
 # ---- T4 ----
 log "T4 poke the head"
 sleep 3
-xy=$(still_pos head)
+xy=$(xy_of head "$(still_line)")
 if [ -n "$xy" ]; then
   set -- $xy
   adb shell input tap $1 $2; sleep 1
@@ -129,17 +138,18 @@ fi
 # ---- T5 ----
 log "T5 long-press, lift, release"
 sleep 4
-xy=$(still_pos back)
+xy=$(xy_of back "$(still_line)")
 if [ -n "$xy" ]; then
   set -- $xy; X=$1; Y=$2
   log "grab at $X,$Y"
+  TOP=$((SH * 35 / 100))   # 拖到螢幕約 35% 高的位置
   adb shell input motionevent DOWN $X $Y; sleep 1.2
-  for k in 1 2 3 4 5 6; do adb shell input motionevent MOVE $X $((Y - k * 110)); done
+  for k in 1 2 3 4 5 6 7 8 9 10; do adb shell input motionevent MOVE $X $((Y - (Y - TOP) * k / 10)); done
   sleep 1.5; shot 6_held
-  adb shell input motionevent UP $X $((Y - 660))
+  adb shell input motionevent UP $X $TOP
   if ! plog | grep -q 'grab at'; then
     log "motionevent did not grab; trying draganddrop"
-    adb shell input draganddrop $X $Y $X $((Y - 660)) 2500 &
+    adb shell input draganddrop $X $Y $X $TOP 2500 &
     sleep 2.6; shot 6_held
     wait
   fi
@@ -149,7 +159,7 @@ if [ -n "$xy" ]; then
   hy=$(centroid_y 6_held); ly=$(centroid_y 7_landed)
   log "centroid y held=$hy landed=$ly"
   if grep -q 'grab at' "$OUT/logcat_t5.txt" && grep -q 'release v=' "$OUT/logcat_t5.txt" && grep -q 'landed impact=' "$OUT/logcat_t5.txt"; then
-    if [ "$hy" -gt 0 ] && [ "$ly" -gt 0 ] && [ $((ly - hy)) -gt 200 ]; then result "PASS T5 picked up (y=$hy), dropped and landed (y=$ly)"; else result "FAIL T5 logs ok but screenshots do not show lift (held=$hy landed=$ly)"; fi
+    if [ "$hy" -gt 0 ] && [ "$ly" -gt 0 ] && [ $((ly - hy)) -gt $((SH / 6)) ]; then result "PASS T5 picked up (y=$hy), dropped and landed (y=$ly)"; else result "FAIL T5 logs ok but screenshots do not show lift (held=$hy landed=$ly)"; fi
   else
     result "FAIL T5 grab/release/land not in log"
   fi
@@ -166,7 +176,7 @@ if pet_up t6 && pet_seen 8_over_dialer; then result "PASS T6 cat floats over ano
 # ---- T7 ----
 log "T7 microphone switch (info)"
 launch; sleep 5
-adb shell input swipe 540 1900 540 500 400; sleep 1   # 開關在頁面下方，先往下捲
+adb shell input swipe $((SW / 2)) $((SH * 8 / 10)) $((SW / 2)) $((SH * 2 / 10)) 400; sleep 1   # 開關在頁面下方，先往下捲
 if tap_label "麥克風：聽得到你" t7; then
   sleep 8
   plog | grep -E 'mic |foreground|overlay (shown|hidden)' | tail -5 >> "$OUT/emulator_steps.txt"
@@ -179,7 +189,7 @@ adb shell dumpsys vibrator_manager 2>/dev/null | grep -i -A2 "$PKG" | head -20 >
 # ---- T8 ----
 log "T8 hide"
 launch; sleep 4
-for k in 1 2; do adb shell input swipe 540 500 540 1900 300; done; sleep 1   # 捲回最上面
+for k in 1 2; do adb shell input swipe $((SW / 2)) $((SH * 2 / 10)) $((SW / 2)) $((SH * 8 / 10)) 300; done; sleep 1   # 捲回最上面
 if tap_label "收起來" t8; then
   sleep 4
   if pet_up t8; then result "FAIL T8 overlay still up after hide"; else result "PASS T8 hide works"; fi

@@ -73,8 +73,9 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
   V2 toWorld(double x, double y) => V2(x / s, (floorY - y) / s);
   double get winW => CatBody.bodyLength * 2.35 * s;
   double get winH => CatBody.bodyLength * 1.5 * s + 6;
-  double get _minX => CatBody.bodyLength * 0.75;
-  double get _maxX => worldW - CatBody.bodyLength * 0.75;
+  // 貓頭（含耳朵）離身體中心約 0.8 體長：留一點邊，睡在邊邊也不會被切掉
+  double get _minX => CatBody.bodyLength * 0.95;
+  double get _maxX => worldW - CatBody.bodyLength * 0.95;
   double get _topY => (floorY - m.statusBar) / s - CatBody.bodyLength * 0.5;
 
   // ---- 視窗 ----
