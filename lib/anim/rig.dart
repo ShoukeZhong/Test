@@ -120,6 +120,7 @@ class PetRig {
   double _nextTwitch = 3;
   double _twitch = 0;
   bool _tailInit = false;
+  V2 _prevBase = V2.zero;
 
   RigFrame? last;
 
@@ -249,9 +250,11 @@ class PetRig {
           ft.swinging = true;
           swinging++;
           ft.sFrom = ft.x;
-          ft.sTo = homeX + (moving ? vx * 0.1 : 0);
+          ft.sTo = homeX + (moving ? vx * 0.08 : 0);
           ft.sT = 0;
-          ft.sDur = moving ? clampD(0.3 - vx.abs() * 0.0025, 0.12, 0.3) : 0.2;
+          final baseDur = moving ? clampD(0.3 - vx.abs() * 0.0025, 0.12, 0.3) : 0.2;
+          // 跨得越遠就用越久，腳掌速度有上限（擺動期約為身體速度的 2 倍，不會瞬移）
+          ft.sDur = math.max(baseDur, (ft.sTo - ft.sFrom).abs() / 75);
           ft.lift = legH * (moving ? 0.28 : 0.12) * (1 - 0.7 * tuck);
         } else if (!moving && (ft.x - homeX).abs() < stride) {
           ft.x = lerpD(ft.x, homeX, 1 - math.exp(-dt * 3)); // 靜止時腳慢慢放好
@@ -317,6 +320,8 @@ class PetRig {
       _tailInit = true;
     }
     final stiff = 1 - math.exp(-dt * 18);
+    final maxStep = 1.4 + base.dist(_prevBase); // 每幀最多比尾巴根部多移動 1.4 單位
+    _prevBase = base;
     var prev = base;
     for (var i = 0; i < _tailN; i++) {
       final cur = _tail[i];
@@ -324,6 +329,9 @@ class PetRig {
       final vl = vel.length;
       if (vl > 1.2) vel = vel * (1.2 / vl); // 尾巴甩動速度上限
       var nxt = cur + vel + (targets[i] - cur) * stiff;
+      final disp = nxt - cur;
+      final dl = disp.length;
+      if (dl > maxStep) nxt = cur + disp * (maxStep / dl);
       final d = nxt - prev;
       final l = d.length;
       if (l > 1e-6) nxt = prev + d * (seg / l);

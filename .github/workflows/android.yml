@@ -68,7 +68,14 @@ jobs:
 
       - name: Build APK
         id: build
-        run: flutter build apk --release 2>&1 | tee ci-out/build.log; exit ${PIPESTATUS[0]}
+        run: |
+          # Gradle 偶爾下載依賴失敗：重試一次
+          for i in 1 2; do
+            flutter build apk --release 2>&1 | tee ci-out/build.log
+            [ "${PIPESTATUS[0]}" -eq 0 ] && exit 0
+            sleep 20
+          done
+          exit 1
 
       - uses: actions/upload-artifact@v4
         if: steps.build.outcome == 'success'
