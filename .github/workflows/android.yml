@@ -1,7 +1,7 @@
 name: android-apk
 on:
   push:
-    branches: [main]
+    branches: [main, pet-life]
   workflow_dispatch:
 
 permissions:
@@ -24,51 +24,56 @@ jobs:
         with:
           channel: stable
           cache: true
+      - run: flutter --version 2>&1 | tee ci-out/flutter_version.txt
 
       # 你的筆電不用裝 Flutter：android/ 資料夾在雲端自動產生
       - name: Generate android/ folder
-        run: flutter create . --platforms=android --project-name pet_overlay --org com.joker 2>&1 | tee ci-out/create.log
+        run: |
+          flutter create . --platforms=android --project-name pet_overlay --org com.joker 2>&1 | tee ci-out/create.log
+          rm -f test/widget_test.dart
 
-      - name: Patch AndroidManifest for overlay
+      - name: Patch AndroidManifest and minSdk
         run: |
           python3 - <<'PY'
-          p = "android/app/src/main/AndroidManifest.xml"
-          s = open(p, encoding="utf-8").read()
-          if "SYSTEM_ALERT_WINDOW" not in s:
-              perms = (
-                  '<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>\n'
-                  '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n'
-                  '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>\n'
-                  '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n'
-                  '    '
-              )
-              service = (
-                  '    <service android:name="flutter.overlay.window.flutter_overlay_window.OverlayService"\n'
-                  '            android:exported="false"\n'
-                  '            android:foregroundServiceType="specialUse">\n'
-                  '            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"\n'
-                  '                android:value="Floating pet companion shown over other apps"/>\n'
-                  '        </service>\n'
-                  '    '
-              )
-              s = s.replace("<application", perms + "<application", 1)
-              s = s.replace("</application>", service + "</application>", 1)
-          # 權限清單裡顯示的 App 名稱，改成好找的「Pet Overlay」
-          s = s.replace('android:label="pet_overlay"', 'android:label="Pet Overlay"')
-          open(p, "w", encoding="utf-8").write(s)
-          open("ci-out/AndroidManifest.xml", "w", encoding="utf-8").write(s)
+          import re, pathlib
+          p = pathlib.Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text(encoding="utf-8")
+          perms = ['CAMERA', 'RECORD_AUDIO', 'VIBRATE']
+          add = ''.join(f'<uses-permission android:name="android.permission.{x}"/>\n    ' for x in perms if x not in s)
+          s = s.replace("<application", add + "<application", 1)
+          s = s.replace('android:label="pet_overlay"', 'android:label="Pet Life"')
+          p.write_text(s, encoding="utf-8")
+          pathlib.Path("ci-out/AndroidManifest.xml").write_text(s, encoding="utf-8")
+          for g in ["android/app/build.gradle.kts", "android/app/build.gradle"]:
+              gp = pathlib.Path(g)
+              if gp.exists():
+                  t = gp.read_text(encoding="utf-8")
+                  t = re.sub(r"minSdk(Version)?\s*=?\s*flutter\.minSdkVersion", lambda m: "minSdk = 24" if g.endswith(".kts") else "minSdkVersion 24", t)
+                  gp.write_text(t, encoding="utf-8")
+                  pathlib.Path("ci-out/" + gp.name).write_text(t, encoding="utf-8")
           PY
 
       - run: flutter pub get 2>&1 | tee ci-out/pub_get.log
+      - run: flutter pub deps --style=compact > ci-out/deps.txt 2>&1 || true
+
+      - name: Analyze
+        id: analyze
+        continue-on-error: true
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee ci-out/analyze.log; exit ${PIPESTATUS[0]}
+
+      - name: Unit tests
+        id: unit
+        continue-on-error: true
+        run: flutter test --reporter expanded 2>&1 | tee ci-out/test.log; exit ${PIPESTATUS[0]}
 
       - name: Build APK
         id: build
-        run: flutter build apk --release 2>&1 | tee ci-out/build.log
+        run: flutter build apk --release 2>&1 | tee ci-out/build.log; exit ${PIPESTATUS[0]}
 
       - uses: actions/upload-artifact@v4
         if: steps.build.outcome == 'success'
         with:
-          name: pet-overlay-apk
+          name: pet-life-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
       # ---- 模擬器實測 ----
@@ -105,7 +110,10 @@ jobs:
         run: |
           {
             echo "commit: ${GITHUB_SHA}"
+            echo "branch: ${GITHUB_REF_NAME}"
             echo "run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "analyze: ${{ steps.analyze.outcome }}"
+            echo "unit: ${{ steps.unit.outcome }}"
             echo "build: ${{ steps.build.outcome }}"
             echo "emulator: ${{ steps.emu.outcome }}"
           } > ci-out/run_info.txt

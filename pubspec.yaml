@@ -1,7 +1,7 @@
 name: pet_overlay
-description: Floating pet MVP (Android overlay)
+description: Pet Life — 從出生到離世都即時運算的手機寵物（MVP）
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.2.0+2
 
 environment:
   sdk: ^3.4.0
@@ -9,7 +9,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_overlay_window: ^1.0.2
+  # 版本範圍放寬，讓 pub 依 CI 的 Flutter 版本挑最新相容版；實際版本見 CI 的 pub_get.log
+  camera: '>=0.10.5 <0.13.0'
+  record: '>=5.1.0 <8.0.0'
+  shared_preferences: '>=2.2.0 <3.0.0'
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true
