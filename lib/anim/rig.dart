@@ -109,6 +109,11 @@ class PetRig {
   final List<Spring> _kneeX = List.generate(4, (_) => Spring(0));
   final List<Spring> _kneeY = List.generate(4, (_) => Spring(0));
   bool _kneeInit = false;
+  final List<V2?> _footPrev = List<V2?>.filled(4, null);
+
+  /// 除錯：腳掌速度上限被觸發的次數與最大超出量（正常應該很少）
+  int footClamps = 0;
+  double footClampMax = 0;
   final List<_Foot> _feet = []; // 0 前近、1 前遠、2 後近、3 後遠
   final List<V2> _tail = [];
   final List<V2> _tailPrev = [];
@@ -279,7 +284,20 @@ class PetRig {
       if (life.wobble > 0 && moving) {
         fy += math.max(0.0, math.sin(time * 7 + i)) * legH * 0.08 * life.wobble;
       }
-      final foot = V2(fx, math.max(0.0, fy));
+      var foot = V2(fx, math.max(0.0, fy));
+      // 最後保險：腳掌每幀最多比身體多移動 2.2 單位，保證畫面不會跳
+      final fp = _footPrev[i];
+      if (fp != null) {
+        final delta = foot - fp;
+        final maxStep = 2.2 + vx.abs() * dt;
+        final dl = delta.length;
+        if (dl > maxStep) {
+          footClamps++;
+          footClampMax = math.max(footClampMax, dl - maxStep);
+          foot = fp + delta * (maxStep / dl);
+        }
+      }
+      _footPrev[i] = foot;
       final rawKnee = _knee(j, foot, legH, kneeForward: !front, f: f);
       if (!_kneeInit) {
         _kneeX[i].x = rawKnee.x;

@@ -63,7 +63,7 @@ List<V2> _points(RigFrame r) => [
     prevTip = r.tail.last;
   }
   // ignore: avoid_print
-  print('worst: $worstWhere');
+  print('worst: $worstWhere | foot speed limiter used ${rig.footClamps}x, max excess ${rig.footClampMax.toStringAsFixed(2)}');
   return (worst, worstTip);
 }
 
