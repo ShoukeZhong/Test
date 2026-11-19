@@ -133,10 +133,11 @@ xy=$(xy_of back "$line")
 if [ -n "$xy" ]; then
   set -- $xy; X=$1; Y=$2
   hx=$(xy_of head "$line" | cut -d' ' -f1)
-  D=$(( (hx > X ? hx - X : X - hx) * 7 / 10 ))   # 背中間到頭的距離 ×0.7：一直在背上
-  [ "$D" -lt 10 ] && D=10
-  log "back at $X,$Y span ±$D"
-  for k in 1 2 3; do adb shell input swipe $((X-D)) $Y $((X+D)) $Y 700; sleep 0.3; done
+  # 從背中間往頭的方向滑，至少 80 px（≈30 dp）：太短太慢的滑動會被當成長按、把貓抱起來
+  DIR=1; [ "$hx" -lt "$X" ] && DIR=-1
+  D=$(( (hx > X ? hx - X : X - hx) * 2 )); [ "$D" -lt 80 ] && D=80
+  log "back at $X,$Y swipe to $((X + DIR * D))"
+  for k in 1 2 3; do adb shell input swipe $X $Y $((X + DIR * D)) $Y 400; sleep 0.3; done
   sleep 1; shot 5_stroke
   plog > "$OUT/logcat_t3.txt"
   if grep -q 'touch stroke' "$OUT/logcat_t3.txt" && grep -q 'act=petted' "$OUT/logcat_t3.txt"; then result "PASS T3 stroke -> petted"; else result "FAIL T3 stroke not detected"; fi
