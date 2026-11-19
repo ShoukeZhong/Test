@@ -106,6 +106,9 @@ class PetRig {
   final Spring pupil = Spring(0.5), gazeX = Spring(0), gazeY = Spring(0), lapS = Spring(0), bobS = Spring(0);
 
   static const int _tailN = 8;
+  final List<Spring> _kneeX = List.generate(4, (_) => Spring(0));
+  final List<Spring> _kneeY = List.generate(4, (_) => Spring(0));
+  bool _kneeInit = false;
   final List<_Foot> _feet = []; // 0 前近、1 前遠、2 後近、3 後遠
   final List<V2> _tail = [];
   final List<V2> _tailPrev = [];
@@ -227,7 +230,7 @@ class PetRig {
       final tuck = front ? frontTuck.x : hindTuck.x;
       var homeX = j.x + f * (front ? 0.02 : -0.02) * L + vx * 0.08;
       homeX += f * L * 0.32 * (front ? reach.x : 0);
-      homeX += lie.x * f * L * (front ? 0.22 : -0.18);
+      homeX += lie.x * f * L * (front ? 0.36 : -0.3);
       homeX = lerpD(homeX, j.x + f * L * (front ? 0.05 : -0.06), tuck * (1 - lie.x));
       final ft = _feet[i];
       if (ft.swinging) {
@@ -274,8 +277,18 @@ class PetRig {
         fy += math.max(0.0, math.sin(time * 7 + i)) * legH * 0.08 * life.wobble;
       }
       final foot = V2(fx, math.max(0.0, fy));
-      legs.add(LegGeom(j, _knee(j, foot, legH, kneeForward: !front, f: f), foot, front: front, far: far));
+      final rawKnee = _knee(j, foot, legH, kneeForward: !front, f: f);
+      if (!_kneeInit) {
+        _kneeX[i].x = rawKnee.x;
+        _kneeY[i].x = rawKnee.y;
+      }
+      // 膝蓋再過一層很短的彈簧：彎曲方向改變時用 0.1 秒左右轉過去，不會一幀翻面
+      _kneeX[i].update(rawKnee.x, 0.035, dt);
+      _kneeY[i].update(rawKnee.y, 0.035, dt);
+      legs.add(LegGeom(j, V2(_kneeX[i].x, _kneeY[i].x), foot, front: front, far: far));
     }
+
+    _kneeInit = true;
 
     // ---- 尾巴（鏈條物理） ----
     final tailLen = L * (species == Species.dog ? 0.6 : 0.95);
@@ -307,7 +320,9 @@ class PetRig {
     var prev = base;
     for (var i = 0; i < _tailN; i++) {
       final cur = _tail[i];
-      final vel = (cur - _tailPrev[i]) * 0.82;
+      var vel = (cur - _tailPrev[i]) * 0.65;
+      final vl = vel.length;
+      if (vl > 1.2) vel = vel * (1.2 / vl); // 尾巴甩動速度上限
       var nxt = cur + vel + (targets[i] - cur) * stiff;
       final d = nxt - prev;
       final l = d.length;
@@ -368,7 +383,7 @@ class PetRig {
     final perp = V2(-dir.y, dir.x);
     // 膝蓋往哪邊彎用「連續權重」，不用 if 翻面：轉身經過正面、或腳伸成水平時，膝蓋才不會瞬間跳到另一邊
     final want = kneeForward ? f : -f;
-    final side = clampD(perp.x * want * 4, -1, 1);
+    final side = clampD(perp.x * want * 2.5, -1, 1);
     return p + perp * (h * side);
   }
 }

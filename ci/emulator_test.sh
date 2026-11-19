@@ -76,6 +76,7 @@ if [ -n "${PX:-}" ]; then
     adb shell input swipe $((PX + 10)) "$PY" "$PX" "$PY" 700
   done
   sleep 1; shot 4_petting
+  logs; cp "$OUT/logcat_flutter.txt" "$OUT/logcat_t3.txt"
   if haslog "touch stroke"; then result "PASS T3 stroke detected on pet"; else result "FAIL T3 stroke not detected"; fi
   if haslog "act=petted"; then result "PASS T3 pet reacted (petted)"; else result "FAIL T3 pet did not react"; fi
 else

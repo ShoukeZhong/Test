@@ -28,14 +28,16 @@ const List<Coat> dogCoats = [
 ];
 List<Coat> coatsOf(Species s) => s == Species.dog ? dogCoats : catCoats;
 
-/// 世界座標 → 螢幕座標
+/// 世界座標 → 螢幕座標（可平移縮放：幼年時鏡頭拉近跟著牠）
 class WorldView {
-  WorldView(this.size) : s = size.width / 100, floorY = size.height * 0.80;
+  WorldView(this.size, {this.left = 0, this.width = 100}) : s = size.width / width, floorY = size.height * 0.80;
   final Size size;
+  final double left;
+  final double width;
   final double s;
   final double floorY;
-  Offset p(V2 v) => Offset(v.x * s, floorY - v.y * s);
-  V2 w(Offset o) => V2(o.dx / s, (floorY - o.dy) / s);
+  Offset p(V2 v) => Offset((v.x - left) * s, floorY - v.y * s);
+  V2 w(Offset o) => V2(o.dx / s + left, (floorY - o.dy) / s);
 }
 
 /// 把骨架畫成貓狗。全部用路徑繪製，沒有圖片素材。

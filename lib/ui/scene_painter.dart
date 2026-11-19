@@ -38,6 +38,9 @@ class SceneModel {
   double jugTilt = 0;
   final List<Particle> particles = [];
   Offset? finger;
+  double viewLeft = 0;
+  double viewWidth = 100;
+  WorldView view(Size size) => WorldView(size, left: viewLeft, width: viewWidth);
 }
 
 class ScenePainter extends CustomPainter {
@@ -49,7 +52,7 @@ class ScenePainter extends CustomPainter {
 
   @override
   void paint(Canvas c, Size size) {
-    final v = WorldView(size);
+    final v = m.view(size);
     final w = m.world;
     final day = _daylight(m.hour);
 

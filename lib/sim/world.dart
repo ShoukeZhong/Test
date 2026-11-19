@@ -13,7 +13,7 @@ class Waste {
 }
 
 class Ball {
-  double x = 58, y = 0, vx = 0, vy = 0;
+  double x = 92, y = 0, vx = 0, vy = 0;
   bool held = false;
   static const double r = 2.2;
 
@@ -50,10 +50,10 @@ class World {
   static const double maxX = 94;
   static const double toiletX = 12; // 貓砂盆／尿布墊中心
   static const double toiletHalfW = 8;
-  static const double bedX = 34;
-  static const double nestX = 50;
-  static const double waterX = 68;
-  static const double foodX = 82;
+  static const double bedX = 30;
+  static const double nestX = 55;
+  static const double waterX = 70;
+  static const double foodX = 84;
   static const int toiletRefuseCount = 5; // 太髒就不用
 
   double food = 0.6; // 碗：0..1（1 = 滿碗，約一天份）

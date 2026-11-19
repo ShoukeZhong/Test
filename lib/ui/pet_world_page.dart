@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../anim/pet_painter.dart';
 import '../anim/rig.dart';
+import '../anim/spring.dart';
 import '../sense/camera_sensor.dart';
 import '../sense/mic_sensor.dart';
 import '../sim/brain.dart';
@@ -58,6 +59,8 @@ class _PetWorldPageState extends State<PetWorldPage> with SingleTickerProviderSt
   bool _devOpen = false;
   bool _swatBuzzed = false;
   bool _sensorsStarted = false;
+  late final Spring _camW;
+  late final Spring _camL;
 
   PetState get s => sim.s;
   World get w => sim.w;
@@ -72,6 +75,8 @@ class _PetWorldPageState extends State<PetWorldPage> with SingleTickerProviderSt
     motherRig = PetRig(s.species, sim.mother.loco.x);
     final coats = coatsOf(s.species);
     scene = SceneModel(s.species, coats[s.coat % coats.length], coats[(s.coat + 1) % coats.length])..world = w;
+    _camW = Spring(_camWidthFor(sim.life.growth));
+    _camL = Spring(clampD(sim.loco.x - _camW.x / 2, 0, 100 - _camW.x));
     WidgetsBinding.instance.addObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _ticker = createTicker(_tick)..start();
@@ -138,6 +143,11 @@ class _PetWorldPageState extends State<PetWorldPage> with SingleTickerProviderSt
     } else {
       scene.motherVisible = false;
     }
+    // 跟拍鏡頭：越小拉得越近，長大後看到整個房間
+    _camW.update(_camWidthFor(life.growth), 1.5, dt);
+    _camL.update(clampD(sim.loco.x - _camW.x / 2, 0, 100 - _camW.x), 0.8, dt);
+    scene.viewWidth = _camW.x;
+    scene.viewLeft = clampD(_camL.x, 0, 100 - _camW.x);
     scene.ageDays = life.days;
     scene.dead = s.dead;
     if (s.dead) scene.deadFade = math.min(1.0, scene.deadFade + dt / 6);
@@ -162,7 +172,7 @@ class _PetWorldPageState extends State<PetWorldPage> with SingleTickerProviderSt
     _logT += dt;
     if (_logT > 3 && _size != Size.zero) {
       _logT = 0;
-      final v = WorldView(_size);
+      final v = scene.view(_size);
       final r = scene.pet;
       final sp = r == null ? Offset.zero : v.p(V2.lerp(r.hip, r.shoulder, 0.5));
       final dpr = View.of(context).devicePixelRatio;
@@ -192,7 +202,7 @@ class _PetWorldPageState extends State<PetWorldPage> with SingleTickerProviderSt
   // ---------------- 飼料袋、水壺 ----------------
   void _updateShelf(double dt) {
     if (_size == Size.zero) return;
-    final v = WorldView(_size);
+    final v = scene.view(_size);
     final k = 1 - math.exp(-dt * 10);
     final bagHeld = _touches.values.any((t) => t.mode == 'bag');
     final jugHeld = _touches.values.any((t) => t.mode == 'jug');
@@ -228,7 +238,7 @@ class _PetWorldPageState extends State<PetWorldPage> with SingleTickerProviderSt
 
   void _updateParticles(double dt) {
     if (_size == Size.zero) return;
-    final floor = WorldView(_size).floorY;
+    final floor = scene.view(_size).floorY;
     for (final p in scene.particles) {
       p.vel = p.vel + Offset(0, 900 * dt);
       p.pos = p.pos + p.vel * dt;
@@ -263,11 +273,13 @@ class _PetWorldPageState extends State<PetWorldPage> with SingleTickerProviderSt
     return null;
   }
 
+  static double _camWidthFor(double growth) => lerpD(46, 100, smooth01((growth - 0.25) / 0.55));
+
   bool _inToilet(V2 p) => (p.x - World.toiletX).abs() < World.toiletHalfW + 2 && p.y < 9;
 
   void _down(PointerDownEvent e) {
     if (_size == Size.zero) return;
-    final v = WorldView(_size);
+    final v = scene.view(_size);
     final wp = v.w(e.localPosition);
     final t = _Touch(e.pointer, 'none', e.localPosition, DateTime.now().millisecondsSinceEpoch)..lastMs = DateTime.now().millisecondsSinceEpoch;
     _touches[e.pointer] = t;
@@ -277,12 +289,12 @@ class _PetWorldPageState extends State<PetWorldPage> with SingleTickerProviderSt
       t.mode = 'bag';
     } else if (ScenePainter.jugRect(_size).inflate(14).contains(e.localPosition) && (scene.jugPos - ScenePainter.jugRect(_size).center).distance < 30) {
       t.mode = 'jug';
+    } else if (_hitPet(wp) != null) {
+      t.mode = 'pet'; // 摸寵物優先於抓球
+      stim.touchingPet = true;
     } else if (wp.dist(V2(w.ball.x, w.ball.y + Ball.r)) < Ball.r * 2.4) {
       t.mode = 'ball';
       w.ball.held = true;
-    } else if (_hitPet(wp) != null) {
-      t.mode = 'pet';
-      stim.touchingPet = true;
     } else if (_inToilet(wp) || w.floor.any((x) => (x.x - wp.x).abs() < 5 && wp.y < 8)) {
       t.mode = 'scoop';
       _scoop(wp);
@@ -304,7 +316,7 @@ class _PetWorldPageState extends State<PetWorldPage> with SingleTickerProviderSt
   void _move(PointerMoveEvent e) {
     final t = _touches[e.pointer];
     if (t == null || _size == Size.zero) return;
-    final v = WorldView(_size);
+    final v = scene.view(_size);
     final now = DateTime.now().millisecondsSinceEpoch;
     final dt = math.max(1, now - t.lastMs) / 1000.0;
     final a = v.w(t.pos), b = v.w(e.localPosition);
