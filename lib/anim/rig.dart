@@ -103,7 +103,7 @@ class PetRig {
   final Spring eyes = Spring(0), mouth = Spring(0), earsBack = Spring(0);
   final Spring tailUp = Spring(0), tailWag = Spring(0), tailLash = Spring(0), tailPuff = Spring(0);
   final Spring pawLift = Spring(0), knead = Spring(0), dig = Spring(0), wiggle = Spring(0);
-  final Spring pupil = Spring(0.5), gazeX = Spring(0), gazeY = Spring(0);
+  final Spring pupil = Spring(0.5), gazeX = Spring(0), gazeY = Spring(0), lapS = Spring(0), bobS = Spring(0);
 
   static const int _tailN = 8;
   final List<_Foot> _feet = []; // 0 前近、1 前遠、2 後近、3 後遠
@@ -183,7 +183,8 @@ class PetRig {
     final f = facing.x;
     final c = curl.x;
     _gait += dt * vx.abs() / math.max(1, L * 0.35) * math.pi;
-    final bob = moving ? math.sin(_gait * 2).abs() * legH * 0.05 : 0.0;
+    bobS.update(moving ? 1 : 0, 0.15, dt);
+    final bob = math.sin(_gait * 2).abs() * legH * 0.05 * bobS.x;
     final wig = math.sin(time * 18) * L * 0.025 * wiggle.x;
     final T = L * 0.25 * (1 + 0.25 * (1 - g));
     final hip = V2(x - f * L * 0.42 * (1 - 0.45 * c) + wig, legH * hipH.x + T * 0.3 + bob);
@@ -201,7 +202,8 @@ class PetRig {
     head = V2.lerp(head, curlHead, c * 0.85);
     final lieHead = V2(shoulder.x + f * L * 0.22, headR * 1.05);
     head = V2.lerp(head, lieHead, lie.x * (1 - c) * 0.6);
-    if (it.lap > 0) head = head + V2(0, math.sin(time * 14) * headR * 0.08);
+    lapS.update(it.lap, 0.1, dt);
+    head = head + V2(0, math.sin(time * 14) * headR * 0.08 * lapS.x);
     final turn = clampD(math.max(lookViewer.x, 1 - f.abs()), 0, 1);
 
     // 視線
@@ -285,7 +287,8 @@ class PetRig {
     var p = base;
     for (var i = 0; i < _tailN; i++) {
       final k = (i + 1) / _tailN;
-      final curve = (up > 0.3 ? -0.18 * up : 0.12) * (1 - c) + c * -0.38;
+      final upCurve = lerpD(0.12, -0.18 * up, smooth01((up - 0.1) / 0.4)); // 尾巴越翹，尾端越往前勾（連續）
+      final curve = upCurve * (1 - c) + c * -0.38;
       ang += curve;
       final wag = math.sin(time * 16 - i * 0.5) * 0.5 * tailWag.x * k;
       final lash = math.sin(time * 3.5 - i * 0.35) * 0.55 * tailLash.x * k;
@@ -357,9 +360,10 @@ class PetRig {
     final h = math.sqrt(math.max(0.0, l1 * l1 - a * a));
     final dir = dv.normalized();
     final p = j + dir * a;
-    var perp = V2(-dir.y, dir.x);
+    final perp = V2(-dir.y, dir.x);
+    // 膝蓋往哪邊彎用「連續權重」，不用 if 翻面：轉身經過正面、或腳伸成水平時，膝蓋才不會瞬間跳到另一邊
     final want = kneeForward ? f : -f;
-    if (perp.x * want < 0) perp = perp * -1;
-    return p + perp * h;
+    final side = clampD(perp.x * want * 4, -1, 1);
+    return p + perp * (h * side);
   }
 }

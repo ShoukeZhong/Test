@@ -9,10 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # 版本範圍放寬，讓 pub 依 CI 的 Flutter 版本挑最新相容版；實際版本見 CI 的 pub_get.log
-  camera: '>=0.10.5 <0.13.0'
-  record: '>=5.1.0 <8.0.0'
-  shared_preferences: '>=2.2.0 <3.0.0'
+  # 以 Flutter 3.50.0（stable）在 CI 解析出的版本為準
+  camera: ^0.12.2
+  record: ^7.2.0
+  shared_preferences: ^2.5.6
 
 dev_dependencies:
   flutter_test:

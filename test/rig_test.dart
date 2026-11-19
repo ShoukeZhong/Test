@@ -26,6 +26,8 @@ List<V2> _points(RigFrame r) => [
   List<V2>? prev;
   V2? prevTip;
   var worst = 0.0, worstTip = 0.0;
+  var worstWhere = '';
+  const names = ['head', 'hip', 'shoulder', 'kneeFN', 'footFN', 'kneeFF', 'footFF', 'kneeHN', 'footHN', 'kneeHF', 'footHF'];
   for (var frame = 0; frame < 1800; frame++) {
     if (frame % 40 == 0) {
       // 每 2/3 秒就突然換一個完全不同的目標：姿勢、位置、視線、表情
@@ -49,13 +51,19 @@ List<V2> _points(RigFrame r) => [
     }
     if (prev != null && prevTip != null && frame > 2) {
       for (var i = 0; i < pts.length; i++) {
-        worst = math.max(worst, pts[i].dist(prev[i]));
+        final d = pts[i].dist(prev[i]);
+        if (d > worst) {
+          worst = d;
+          worstWhere = '${names[i]} @frame $frame posture=${it.posture.name} facing=${r.facing.toStringAsFixed(2)} vx=${loco.vx.toStringAsFixed(1)}';
+        }
       }
       worstTip = math.max(worstTip, r.tail.last.dist(prevTip));
     }
     prev = pts;
     prevTip = r.tail.last;
   }
+  // ignore: avoid_print
+  print('worst: $worstWhere');
   return (worst, worstTip);
 }
 
