@@ -30,7 +30,8 @@ class _Watch {
     final f = w.frame!, p = w.placement;
     final pts = _bodyPoints(f).map(p.map).toList();
     final com = p.map(f.com);
-    lowest = math.min(lowest, PetBody.lowestY(f, p));
+    // 「不穿過地板」只檢查抱著和空中（在地上時腳本來就踩在地板上）
+    if (w.body.mode != CarryMode.ground) lowest = math.min(lowest, PetBody.lowestY(f, p));
     if (prev != null && prevCom != null) {
       final da = wrapAngle(p.angle - prevAngle);
       for (var i = 0; i < pts.length; i++) {

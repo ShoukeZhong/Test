@@ -28,9 +28,25 @@ pet_up() {
   grep -A4 "u0 $PKG}" "$OUT/dumpsys_$1.txt" | grep -q "ty=APPLICATION_OVERLAY"
 }
 
+# CI 模擬器偶爾會跳「Pixel Launcher isn't responding」之類的系統對話框，擋住畫面：按「Wait」關掉
+dismiss_dialogs() {
+  adb shell uiautomator dump /sdcard/ui_d.xml > /dev/null 2>&1
+  adb pull /sdcard/ui_d.xml "$OUT/ui_dialog.xml" > /dev/null 2>&1
+  if grep -qE "responding|keeps stopping|has stopped" "$OUT/ui_dialog.xml" 2>/dev/null; then
+    local xy
+    xy=$(python3 ci/find_tap.py "$OUT/ui_dialog.xml" "Wait") || xy=$(python3 ci/find_tap.py "$OUT/ui_dialog.xml" "Close app") || xy=""
+    if [ -n "$xy" ]; then
+      log "dismiss system dialog at $xy ($(grep -oE 'text="[^"]*(responding|stopping|stopped)[^"]*"' "$OUT/ui_dialog.xml" | head -1))"
+      adb shell input tap $xy
+      sleep 2
+    fi
+  fi
+}
+
 tap_label() {  # 從畫面上找文字並點下去
   local xy=""
   for i in 1 2 3 4; do
+    dismiss_dialogs
     adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1
     adb pull /sdcard/ui.xml "$OUT/ui_$2.xml" > /dev/null 2>&1
     xy=$(python3 ci/find_tap.py "$OUT/ui_$2.xml" "$1") && break
@@ -77,6 +93,10 @@ log "install"
 adb install -r "$APK" >> "$OUT/emulator_steps.txt" 2>&1 || { result "FAIL install"; exit 1; }
 for p in POST_NOTIFICATIONS RECORD_AUDIO CAMERA; do adb shell pm grant "$PKG" android.permission.$p 2>/dev/null || true; done
 adb shell appops set "$PKG" SYSTEM_ALERT_WINDOW allow
+adb shell settings put global hide_error_dialogs 1 2>/dev/null || true
+adb shell input keyevent KEYCODE_WAKEUP; adb shell wm dismiss-keyguard 2>/dev/null || true
+sleep 20   # 讓桌面程式先穩定下來（大螢幕的模擬器開機後常常還在忙）
+dismiss_dialogs
 adb shell wm size >> "$OUT/emulator_steps.txt"; adb shell wm density >> "$OUT/emulator_steps.txt"
 SIZE=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1)
 SW=${SIZE%x*}; SH=${SIZE#*x}
@@ -96,7 +116,7 @@ sleep 3; shot 2_after_show
 
 # ---- T2 ----
 log "T2 home screen"
-adb shell input keyevent KEYCODE_HOME; sleep 6; shot 3_home_a; sleep 6; shot 4_home_b
+adb shell input keyevent KEYCODE_HOME; sleep 4; dismiss_dialogs; sleep 2; shot 3_home_a; sleep 6; shot 4_home_b
 diff=$(python3 ci/frame_diff.py "$OUT/3_home_a.png" "$OUT/4_home_b.png")
 log "frame diff home a/b = $diff px"
 if pet_seen 3_home_a && pet_up t2; then
@@ -107,6 +127,7 @@ fi
 
 # ---- T3 ----
 log "T3 stroke the back"
+dismiss_dialogs
 line=$(still_line)
 xy=$(xy_of back "$line")
 if [ -n "$xy" ]; then
@@ -137,7 +158,8 @@ fi
 
 # ---- T5 ----
 log "T5 long-press, lift, release"
-sleep 4
+dismiss_dialogs
+sleep 2
 xy=$(xy_of back "$(still_line)")
 if [ -n "$xy" ]; then
   set -- $xy; X=$1; Y=$2
@@ -170,7 +192,7 @@ fi
 
 # ---- T6 ----
 log "T6 another app (dialer)"
-adb shell am start -a android.intent.action.DIAL > /dev/null 2>&1; sleep 6; shot 8_over_dialer
+adb shell am start -a android.intent.action.DIAL > /dev/null 2>&1; sleep 5; dismiss_dialogs; sleep 1; shot 8_over_dialer
 if pet_up t6 && pet_seen 8_over_dialer; then result "PASS T6 cat floats over another app"; else result "FAIL T6 cat not over other app"; fi
 
 # ---- T7 ----

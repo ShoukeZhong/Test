@@ -2,35 +2,46 @@
 
 標示：〔查證〕＝有找到出處｜〔記憶〕＝未查證，之後要補｜〔估〕＝工程估計，需要用實際體驗調整
 
-## 生理參數（lib/sim/species.dart、life.dart、physiology.dart）
+第一版（懸浮貓）**不做**：壽命、成長、老化、死亡、飢餓、口渴、排泄、照顧責任、狗、球、房間場景。
+
+## 身體與內在狀態（lib/sim/cat.dart、needs.dart）
 
 | 參數 | 值 | 出處 |
 |---|---|---|
-| 貓壽命 | 12–18 年（出生時隨機決定） | 〔查證〕Embrace Pet Insurance、Angel City Vet、Cloud9 Vets：平均 12–18 年，中位數約 14 年 |
-| 開眼 | 7–10 天 | 〔查證〕International Cat Care；Pet Circle（Dr Gillian Hill BVSc） |
-| 開始聽得到 | 約第 5 天 | 〔查證〕The Happy Cat Site |
-| 搖晃走路 | 第 2–3 週 | 〔查證〕International Cat Care；Royal Canin |
-| 斷奶 | 約 4 週開始、8 週完成 | 〔查證〕Royal Canin；Pet Circle |
-| 新生兒排泄靠母貓刺激 | — | 〔查證〕Pet Circle |
-| 新生兒睡眠 | 約 90% | 〔查證〕Royal Canin；WebVet：新生幼貓每天睡 20–22 小時 |
-| 成貓睡眠 | 12–16 小時 | 〔查證〕WebVet；Inverse 訪問的獸醫行為專家 |
-| 老貓睡眠 | 16–20 小時 | 〔查證〕WebVet |
-| 成貓尺寸 | 約 12 個月 | 〔查證〕Royal Canin |
-| 排尿 | 成貓每天 2–4 次 | 〔查證〕Cats Protection；Rover；Hepper（獸醫審閱） |
-| 排便 | 成貓每天 1–2 次，幼貓更頻繁 | 〔查證〕Cats Protection；Litter-Robot |
-| 貓砂盆太髒會排在外面 | — | 〔查證〕Hepper |
-| 幼貓眼睛先是藍灰色 | — | 〔查證〕Cats Protection（Countryfile 訪問） |
-| 狗的各項參數 | 見 species.dart | 〔記憶〕下一輪要查證 |
-| 呼吸頻率、食量、水量、健康下降速度 | 見 physiology.dart | 〔估〕 |
+| 成貓睡眠 | 12–16 小時 → 睡眠比例 0.58 | 〔查證〕WebVet；Inverse 訪問的獸醫行為專家 |
+| 頭身長 | 約 46 cm → 1 單位 ≈ 1.8 cm | 〔記憶〕 |
+| 重力 | 545 單位/s²（9.81 m/s² ÷ 1.8 cm） | 由上一列換算〔估〕 |
+| 疲倦恢復、無聊、寂寞累積速度、恐懼消退 | 見 needs.dart | 〔估〕 |
+
+## 抱起、掉落（lib/overlay/pet_body.dart）
+
+- 抱著：物理擺（physical pendulum），支點在胸口；手指加速度用「等效重力 g − a」加進去，所以甩手會讓身體晃。阻尼比 0.45、迴轉半徑 0.3 體長、感受加速度上限 1.5 g〔估〕。
+- 放手：拋體運動；翻正反射用臨界阻尼彈簧把身體轉回腳朝下（半衰期 0.1 s）〔估〕。真實機制（身體前後兩段反向扭轉、總角動量為零）：
+  - Kane, T. R. & Scher, M. P. (1969). A dynamical explanation of the falling cat phenomenon. International Journal of Solids and Structures 5(7): 663–670. https://doi.org/10.1016/0020-7683(69)90086-9 〔查證〕
+- 落地：找身體最低點碰地的那一刻（每幀 4 個子步），切回地面；剩下的傾斜和高度用彈簧收掉，身體座標平移對齊（rebase），畫面不跳。
+- 落地後理毛（被搬動後的自我安撫）〔記憶〕；撞擊越重越怕〔估〕。
+
+## 觸覺
+
+- 呼嚕震動 25 Hz（20 ms 震、20 ms 停）：
+  - 家貓呼嚕基頻約 20–30 Hz〔查證〕：Herbst, C. T. et al. (2023). Domestic cat larynges can produce purring frequencies without neural input. Current Biology 33: 4727–4732；Remmers, J. E. & Gautier, H. (1972). Neural and mechanical mechanisms of feline purring. Respiration Physiology 16: 351–361。
+- 長按 450 ms 抱起、移動超過 8 dp 才算撫摸（接近 Android 預設的長按時間與 touch slop）〔記憶〕。
+
+## Android 懸浮視窗與前景服務
+
+- Android 14 起，建立 microphone 類型的前景服務時系統會檢查 RECORD_AUDIO，沒有就丟 SecurityException；在背景建立 camera／microphone 類型的前景服務也會被擋〔查證〕：Android Developers「Foreground service types are required」「Restrictions on starting a foreground service from the background」。
+  → 所以 packages/flutter_overlay_window 改成依「已授權的權限」組合類型，而且只從控制 App（前景）啟動；改開關時重開一次服務。
+- flutter_overlay_window 1.0.2 原始碼（MIT，X-SLAYER）：`showOverlay` 的寬高是實體像素、`moveOverlay`／`resizeOverlay` 是 dp；`onTouch` 只在 enableDrag 時攔截〔查證：讀原始碼〕。修改內容見 packages/flutter_overlay_window/PET_LIFE_CHANGES.md。
+- 模擬器：reactivecircus/android-emulator-runner 的 `profile` 參數（README 範例 `pixel_7_pro`）〔查證：讀 README〕。
 
 ## 行為與個性
 
 - Litchfield, C. A. et al. (2017). The ‘Feline Five’. PLOS ONE 12(8): e0183455. https://doi.org/10.1371/journal.pone.0183455
-- Jones, A. C. & Gosling, S. D. (2005). Temperament and personality in dogs. Applied Animal Behaviour Science 95: 1–53. https://doi.org/10.1016/j.applanim.2005.04.008
 - Stanton, L. A. et al. (2015). A standardized ethogram for the felidae. Applied Animal Behaviour Science 173: 3–16. https://doi.org/10.1016/j.applanim.2015.04.001
 - Blumberg, B. M. (1996). Old Tricks, New Dogs: Ethology and Interactive Creatures. MIT PhD thesis. https://characters.media.mit.edu/Theses/blumberg_phd.pdf
 - Blumberg, B. M. & Galyean, T. A. (1995). Multi-level direction of autonomous creatures for real-time virtual environments. SIGGRAPH ’95.（行為層 → 運動層 → 幾何層的分層架構）
 - Mark, D. (2009). Behavioral Mathematics for Game AI；Mark & Dill (2010) GDC。（效用式決策）
+- 撫摸偏好（臉頰、頭最喜歡，肚子、尾巴不喜歡）與過度刺激後揮爪〔記憶〕
 
 ## 連續動畫
 
@@ -38,10 +49,9 @@
 - Clavet, S. (2016). Motion Matching and The Road to Next-Gen Animation. GDC 2016.
 - Zhang, H., Starke, S., Komura, T. & Saito, J. (2018). Mode-Adaptive Neural Networks for Quadruped Motion Control. ACM TOG 37(4). https://doi.org/10.1145/3197517.3201366（之後要讓步態更真實可走這條）
 - Holden, D. et al. (2020). Learned Motion Matching. SIGGRAPH 2020. https://doi.org/10.1145/3386569.3392440
-- Wang, X. et al. (2025). AniMo: Species-Aware Model for Text-Driven Animal Motion Generation. CVPR 2025.（文字生成動物動作）
 
 ## 感測
 
-- MediaPipe Tasks（之後若要做臉部／手部偵測）：https://developers.google.com/edge/mediapipe/solutions
 - camera 套件：https://pub.dev/packages/camera
 - record 套件：https://pub.dev/packages/record
+- MediaPipe Tasks（之後若要做臉部／手部偵測）：https://developers.google.com/edge/mediapipe/solutions
