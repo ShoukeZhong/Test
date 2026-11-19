@@ -354,11 +354,16 @@ class PetRig {
   static V2 _knee(V2 j, V2 foot, double legH, {required bool kneeForward, required double f}) {
     final l1 = legH * 0.56, l2 = legH * 0.56;
     final dv = foot - j;
-    var d = dv.length;
-    d = clampD(d, (l1 - l2).abs() + 1e-3, l1 + l2 - 1e-3);
+    final rawD = dv.length;
+    final d = clampD(rawD, (l1 - l2).abs() + 1e-3, l1 + l2 - 1e-3);
     final a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
     final h = math.sqrt(math.max(0.0, l1 * l1 - a * a));
-    final dir = dv.normalized();
+    // 腳收得離關節很近時，腿的「方向」幾乎沒有定義，一點點移動就會讓膝蓋亂轉；
+    // 這時把參考方向平滑地拉向正下方。
+    const down = V2(0, -1);
+    final raw = rawD > 1e-6 ? dv * (1 / rawD) : down;
+    final blend = V2.lerp(down, raw, smooth01(rawD / (0.35 * legH)));
+    final dir = blend.length < 1e-3 ? down : blend.normalized();
     final p = j + dir * a;
     final perp = V2(-dir.y, dir.x);
     // 膝蓋往哪邊彎用「連續權重」，不用 if 翻面：轉身經過正面、或腳伸成水平時，膝蓋才不會瞬間跳到另一邊

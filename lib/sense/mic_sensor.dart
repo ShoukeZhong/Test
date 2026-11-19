@@ -61,7 +61,8 @@ class MicSensor {
     _floorDb = db < _floorDb ? lerpD(_floorDb, db, 0.3) : _floorDb + chunkSec * 0.6;
     final rel = db - _floorDb;
     stim.soundLevel = clampD(rel / 40, 0, 1);
-    if (db - _lastDb > 16 && rel > 22) {
+    // 只有拍手、東西掉落這種「比環境大很多、又很突然」的聲音才算巨響；一般說話不會嚇到牠〔估〕
+    if (db - _lastDb > 20 && rel > 38) {
       stim.loudOnset = true;
       petLog('sound onset ${rel.toStringAsFixed(0)}dB');
     }

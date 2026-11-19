@@ -27,6 +27,7 @@ class _Touch {
   final int ms;
   double moved = 0;
   int lastMs = 0;
+  bool loggedStroke = false;
   V2 vel = V2.zero;
 }
 
@@ -328,7 +329,8 @@ class _PetWorldPageState extends State<PetWorldPage> with SingleTickerProviderSt
           stim.strokeSpeed = lerpD(stim.strokeSpeed, dist / dt, 0.3);
           stim.sinceStroke = 0;
           _strokeLogT += dt;
-          if (_strokeLogT > 0.5) {
+          if (!t.loggedStroke || _strokeLogT > 0.5) {
+            t.loggedStroke = true;
             _strokeLogT = 0;
             petLog('touch stroke region=${region.name} speed=${stim.strokeSpeed.toStringAsFixed(0)}');
           }

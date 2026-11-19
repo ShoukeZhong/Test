@@ -70,7 +70,11 @@ sleep 4
 read -r PX PY <<< "$(pet_xy)"
 log "pet at $PX,$PY"
 if [ -n "${PX:-}" ]; then
-  for i in 1 2 3 4; do adb shell input swipe $((PX - 45)) "$PY" $((PX + 45)) "$PY" 500; done
+  # 像真人一樣：手指先放在牠身上，再來回輕撫
+  for i in 1 2; do
+    adb shell input swipe "$PX" "$PY" $((PX + 10)) "$PY" 700
+    adb shell input swipe $((PX + 10)) "$PY" "$PX" "$PY" 700
+  done
   sleep 1; shot 4_petting
   if haslog "touch stroke"; then result "PASS T3 stroke detected on pet"; else result "FAIL T3 stroke not detected"; fi
   if haslog "act=petted"; then result "PASS T3 pet reacted (petted)"; else result "FAIL T3 pet did not react"; fi
