@@ -1,4 +1,6 @@
 # 不依賴 flutter_lints 套件（CI 不必多裝）；只用 Dart 內建檢查
 analyzer:
+  exclude:
+    - packages/**
   errors:
     deprecated_member_use: ignore

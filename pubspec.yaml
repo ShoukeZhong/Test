@@ -1,7 +1,7 @@
 name: pet_overlay
-description: Pet Life — 從出生到離世都即時運算的手機寵物（MVP）
+description: Pet Overlay — 住在手機螢幕上的貓（懸浮視窗，MVP）
 publish_to: 'none'
-version: 0.2.0+2
+version: 0.3.0+3
 
 environment:
   sdk: ^3.4.0
@@ -13,6 +13,9 @@ dependencies:
   camera: ^0.12.2
   record: ^7.2.0
   shared_preferences: ^2.5.6
+  # 內建修改版（MIT，原作 X-SLAYER，1.0.2）；改了什麼見 packages/flutter_overlay_window/PET_LIFE_CHANGES.md
+  flutter_overlay_window:
+    path: packages/flutter_overlay_window
 
 dev_dependencies:
   flutter_test:

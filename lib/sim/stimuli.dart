@@ -20,7 +20,8 @@ class Stimuli {
   double strokeSpeed = 0; // 世界單位／秒
   double sinceStroke = 99; // 距上次撫摸幾秒
   bool poke = false; // 戳一下
-  double? fingerX; // 手指在地板上（像逗貓棒／雷射點）
+  double? fingerX; // 手指在貓旁邊滑動（像逗貓棒）；世界座標
+  double fingerY = 0;
   double fingerSpeed = 0;
   bool touchingPet = false;
 

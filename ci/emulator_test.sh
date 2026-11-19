@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# 模擬器實測（照真人操作順序）：
-#  T1 第一次開 → 設定頁 → 按「讓牠出生」→ 進入寵物世界、模擬開始跑
-#  T2 畫面是連續動畫：相隔 0.5 秒的兩張截圖不一樣，而且看得到寵物
-#  T3 用手指撫摸寵物 → 判定為撫摸、進入「被摸」行為
-#  T4 在地板上滑手指 → 判定為逗貓的手指
-#  T5 關掉再開 → 不用重新設定，並補算關掉期間的時間
-#  （模擬器沒有真的鏡頭和麥克風，T6 只記錄感測器狀態，不判定成敗）
+# 模擬器實測（照真人操作）：
+#  T1 開控制 App → 按「讓牠出現在螢幕上」→ 懸浮視窗出現
+#  T2 回桌面 → 截圖看得到橘貓，而且畫面會動
+#  T3 在貓背上滑 → 被摸（petted）
+#  T4 輕點貓頭 → 戳一下（poke）
+#  T5 長按貓 → 抱起來往上拖 → 放手 → 掉下來落地 → 視窗縮回小的
+#  T6 打開別的 App（撥號）→ 貓還在上面
+#  T7 打開麥克風開關（資訊）
+#  T8 按「收起來」→ 懸浮視窗消失
 set -u
 OUT=ci-out
 PKG=com.joker.pet_overlay
@@ -18,12 +20,17 @@ log() { echo "[emu] $*" | tee -a "$OUT/emulator_steps.txt"; }
 shot() { adb exec-out screencap -p > "$OUT/$1.png"; }
 result() { echo "$1" | tee -a "$OUT/emulator_result.txt"; case "$1" in FAIL*) FAILED=1;; esac; }
 launch() { adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1; }
-logs() { adb logcat -d -s flutter:I > "$OUT/logcat_flutter.txt" 2>&1; }
-haslog() { logs; grep -q "$1" "$OUT/logcat_flutter.txt"; }
+plog() { adb logcat -d 2>/dev/null | grep '\[pet\]'; }
+
+# 這個 App 自己的浮動視窗在不在（SystemUI 也有 APPLICATION_OVERLAY，不能只看類型）
+pet_up() {
+  adb shell dumpsys window windows > "$OUT/dumpsys_$1.txt" 2>&1
+  grep -A4 "u0 $PKG}" "$OUT/dumpsys_$1.txt" | grep -q "ty=APPLICATION_OVERLAY"
+}
 
 tap_label() {  # 從畫面上找文字並點下去
   local xy=""
-  for i in 1 2 3 4 5; do
+  for i in 1 2 3 4; do
     adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1
     adb pull /sdcard/ui.xml "$OUT/ui_$2.xml" > /dev/null 2>&1
     xy=$(python3 ci/find_tap.py "$OUT/ui_$2.xml" "$1") && break
@@ -35,78 +42,151 @@ tap_label() {  # 從畫面上找文字並點下去
   adb shell input tap $xy
 }
 
-pet_xy() {  # 從 logcat 最後一行 tick 取出寵物在螢幕上的位置（實體像素）
-  logs
-  grep -o 'screen=[0-9]*,[0-9]*' "$OUT/logcat_flutter.txt" | tail -1 | sed 's/screen=//; s/,/ /'
+# 截圖裡真的看得到橘貓；輸出「像素數 重心x 重心y」
+pet_seen() { python3 ci/pet_visible.py "$OUT/$1.png" > "$OUT/pixels_$1.txt"; }
+centroid_y() { awk '{print $3}' "$OUT/pixels_$1.txt"; }
+
+wait_log() {  # wait_log 'pattern' 秒數
+  for i in $(seq 1 "$2"); do
+    plog | grep -q "$1" && return 0
+    sleep 1
+  done
+  return 1
+}
+
+# 等貓停下來（vx≈0），回傳某個身體部位的實體像素座標 "X Y"
+still_pos() {  # still_pos back|head
+  local line=""
+  for i in $(seq 1 40); do
+    line=$(plog | grep '\] tick ' | tail -1)
+    local vx=$(echo "$line" | grep -oE 'vx=-?[0-9.]+' | cut -d= -f2)
+    local mode=$(echo "$line" | grep -oE 'mode=[a-z]+' | cut -d= -f2)
+    if [ -n "$vx" ] && [ "$mode" = "ground" ] && awk "BEGIN{exit !($vx < 0.5 && $vx > -0.5)}"; then
+      break
+    fi
+    sleep 1
+  done
+  echo "$line" >> "$OUT/emulator_steps.txt"
+  echo "$line" | grep -oE "$1=[0-9]+,[0-9]+" | head -1 | cut -d= -f2 | tr ',' ' '
 }
 
 adb wait-for-device
 log "install"
 adb install -r "$APK" >> "$OUT/emulator_steps.txt" 2>&1 || { result "FAIL install"; exit 1; }
-for p in CAMERA RECORD_AUDIO POST_NOTIFICATIONS; do adb shell pm grant "$PKG" android.permission.$p 2>/dev/null || true; done
+for p in POST_NOTIFICATIONS RECORD_AUDIO CAMERA; do adb shell pm grant "$PKG" android.permission.$p 2>/dev/null || true; done
+adb shell appops set "$PKG" SYSTEM_ALERT_WINDOW allow
+adb shell wm size >> "$OUT/emulator_steps.txt"; adb shell wm density >> "$OUT/emulator_steps.txt"
+adb shell input 2>&1 | grep -iE "motionevent|draganddrop" >> "$OUT/emulator_steps.txt" || true
 adb logcat -c
 
 # ---- T1 ----
-log "T1 first launch -> setup -> birth"
-launch; sleep 20; shot 1_setup
-if tap_label "讓牠出生" t1; then
-  sleep 12; shot 2_world
-  if haslog "\[pet\] tick"; then result "PASS T1 birth -> world simulation running"; else result "FAIL T1 no simulation ticks after birth"; fi
+log "T1 launch control app"
+launch; sleep 15; shot 1_control
+if tap_label "讓牠出現在螢幕上" t1; then
+  if wait_log 'window small ready' 25 && pet_up t1; then result "PASS T1 overlay shown"; else result "FAIL T1 overlay not shown"; fi
 else
-  result "FAIL T1 button '讓牠出生' not found"
+  result "FAIL T1 button not found"
 fi
+sleep 3; shot 2_after_show
 
 # ---- T2 ----
-log "T2 continuous animation"
-shot 3a; sleep 0.5; shot 3b
-diff=$(python3 ci/frame_diff.py "$OUT/3a.png" "$OUT/3b.png")
-log "changed pixels between frames: $diff"
-if [ "${diff:-0}" -ge 15 ]; then result "PASS T2 frames keep changing ($diff px)"; else result "FAIL T2 picture looks frozen ($diff px)"; fi
-if python3 ci/pet_visible.py "$OUT/3a.png" 120 > "$OUT/pixels_3a.txt"; then result "PASS T2 pet visible ($(cat "$OUT/pixels_3a.txt") px)"; else result "FAIL T2 pet not visible ($(cat "$OUT/pixels_3a.txt") px)"; fi
+log "T2 home screen"
+adb shell input keyevent KEYCODE_HOME; sleep 6; shot 3_home_a; sleep 6; shot 4_home_b
+diff=$(python3 ci/frame_diff.py "$OUT/3_home_a.png" "$OUT/4_home_b.png")
+log "frame diff home a/b = $diff px"
+if pet_seen 3_home_a && pet_up t2; then
+  if [ "$diff" -ge 15 ]; then result "PASS T2 cat visible over launcher and animating ($(cat $OUT/pixels_3_home_a.txt))"; else result "FAIL T2 cat visible but frozen (diff=$diff)"; fi
+else
+  result "FAIL T2 cat not visible over launcher ($(cat $OUT/pixels_3_home_a.txt))"
+fi
 
 # ---- T3 ----
-log "T3 stroke the pet"
-sleep 4
-read -r PX PY <<< "$(pet_xy)"
-log "pet at $PX,$PY"
-if [ -n "${PX:-}" ]; then
-  # 像真人一樣：手指先放在牠身上，再來回輕撫
-  for i in 1 2; do
-    adb shell input swipe "$PX" "$PY" $((PX + 10)) "$PY" 700
-    adb shell input swipe $((PX + 10)) "$PY" "$PX" "$PY" 700
-  done
-  sleep 1; shot 4_petting
-  logs; cp "$OUT/logcat_flutter.txt" "$OUT/logcat_t3.txt"
-  if haslog "touch stroke"; then result "PASS T3 stroke detected on pet"; else result "FAIL T3 stroke not detected"; fi
-  if haslog "act=petted"; then result "PASS T3 pet reacted (petted)"; else result "FAIL T3 pet did not react"; fi
+log "T3 stroke the back"
+xy=$(still_pos back)
+if [ -n "$xy" ]; then
+  set -- $xy; X=$1; Y=$2
+  log "back at $X,$Y"
+  for k in 1 2 3; do adb shell input swipe $((X-45)) $Y $((X+45)) $Y 700; sleep 0.3; done
+  sleep 1; shot 5_stroke
+  plog > "$OUT/logcat_t3.txt"
+  if grep -q 'touch stroke' "$OUT/logcat_t3.txt" && grep -q 'act=petted' "$OUT/logcat_t3.txt"; then result "PASS T3 stroke -> petted"; else result "FAIL T3 stroke not detected"; fi
 else
-  result "FAIL T3 no pet position in log"
+  result "FAIL T3 no position log"
 fi
 
 # ---- T4 ----
-log "T4 finger on the floor"
-read -r PX PY <<< "$(pet_xy)"
-W=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1)
-H=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f2)
-FY=$((H * 82 / 100))
-FX=$((W * 85 / 100)); [ "${PX:-0}" -gt $((W / 2)) ] && FX=$((W * 25 / 100))
-adb shell input swipe "$FX" "$FY" $((FX + W / 10)) "$FY" 800
-sleep 1
-if haslog "touch down mode=finger"; then result "PASS T4 floor finger detected"; else result "FAIL T4 floor finger not detected"; fi
+log "T4 poke the head"
+sleep 3
+xy=$(still_pos head)
+if [ -n "$xy" ]; then
+  set -- $xy
+  adb shell input tap $1 $2; sleep 1
+  if wait_log 'touch poke' 5; then result "PASS T4 tap -> poke"; else result "FAIL T4 poke not detected"; fi
+else
+  result "FAIL T4 no position log"
+fi
 
 # ---- T5 ----
-log "T5 close and reopen"
-adb shell am force-stop "$PKG"; sleep 15
-adb logcat -c
-launch; sleep 15; shot 5_reopen
-adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1
-adb pull /sdcard/ui.xml "$OUT/ui_t5.xml" > /dev/null 2>&1
-if grep -q "讓牠出生" "$OUT/ui_t5.xml"; then result "FAIL T5 setup page shown again (state lost)"; else result "PASS T5 pet kept after restart"; fi
-if haslog "catch-up"; then result "PASS T5 offline time caught up"; else result "FAIL T5 no catch-up after restart"; fi
+log "T5 long-press, lift, release"
+sleep 4
+xy=$(still_pos back)
+if [ -n "$xy" ]; then
+  set -- $xy; X=$1; Y=$2
+  log "grab at $X,$Y"
+  adb shell input motionevent DOWN $X $Y; sleep 1.2
+  for k in 1 2 3 4 5 6; do adb shell input motionevent MOVE $X $((Y - k * 110)); done
+  sleep 1.5; shot 6_held
+  adb shell input motionevent UP $X $((Y - 660))
+  if ! plog | grep -q 'grab at'; then
+    log "motionevent did not grab; trying draganddrop"
+    adb shell input draganddrop $X $Y $X $((Y - 660)) 2500 &
+    sleep 2.6; shot 6_held
+    wait
+  fi
+  sleep 3; shot 7_landed
+  plog > "$OUT/logcat_t5.txt"
+  pet_seen 6_held; pet_seen 7_landed
+  hy=$(centroid_y 6_held); ly=$(centroid_y 7_landed)
+  log "centroid y held=$hy landed=$ly"
+  if grep -q 'grab at' "$OUT/logcat_t5.txt" && grep -q 'release v=' "$OUT/logcat_t5.txt" && grep -q 'landed impact=' "$OUT/logcat_t5.txt"; then
+    if [ "$hy" -gt 0 ] && [ "$ly" -gt 0 ] && [ $((ly - hy)) -gt 200 ]; then result "PASS T5 picked up (y=$hy), dropped and landed (y=$ly)"; else result "FAIL T5 logs ok but screenshots do not show lift (held=$hy landed=$ly)"; fi
+  else
+    result "FAIL T5 grab/release/land not in log"
+  fi
+  if wait_log 'window -> small' 8; then log "window back to small"; fi
+else
+  result "FAIL T5 no position log"
+fi
 
 # ---- T6 ----
-logs
-grep -E "mic|camera" "$OUT/logcat_flutter.txt" | head -5 | sed 's/^/INFO T6 /' | tee -a "$OUT/emulator_result.txt"
+log "T6 another app (dialer)"
+adb shell am start -a android.intent.action.DIAL > /dev/null 2>&1; sleep 6; shot 8_over_dialer
+if pet_up t6 && pet_seen 8_over_dialer; then result "PASS T6 cat floats over another app"; else result "FAIL T6 cat not over other app"; fi
+
+# ---- T7 ----
+log "T7 microphone switch (info)"
+launch; sleep 5
+adb shell input swipe 540 1900 540 500 400; sleep 1   # 開關在頁面下方，先往下捲
+if tap_label "麥克風：聽得到你" t7; then
+  sleep 8
+  plog | grep -E 'mic |foreground|overlay (shown|hidden)' | tail -5 >> "$OUT/emulator_steps.txt"
+  if plog | grep -q 'mic on'; then result "INFO T7 mic on inside overlay"; else result "INFO T7 mic did not start (see logcat)"; fi
+else
+  result "INFO T7 mic switch not found"
+fi
+adb shell dumpsys vibrator_manager 2>/dev/null | grep -i -A2 "$PKG" | head -20 > "$OUT/vibrator.txt" || true
+
+# ---- T8 ----
+log "T8 hide"
+launch; sleep 4
+for k in 1 2; do adb shell input swipe 540 500 540 1900 300; done; sleep 1   # 捲回最上面
+if tap_label "收起來" t8; then
+  sleep 4
+  if pet_up t8; then result "FAIL T8 overlay still up after hide"; else result "PASS T8 hide works"; fi
+else
+  result "FAIL T8 hide button not found"
+fi
 
 adb logcat -d > "$OUT/logcat.txt" 2>&1
+plog > "$OUT/pet_log.txt"
 exit $FAILED

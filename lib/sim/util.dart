@@ -24,14 +24,29 @@ class V2 {
   }
 
   static V2 lerp(V2 a, V2 b, double t) => V2(lerpD(a.x, b.x, t), lerpD(a.y, b.y, t));
+
+  /// 逆時針旋轉（y 向上）
+  V2 rotate(double a) {
+    final c = math.cos(a), s = math.sin(a);
+    return V2(x * c - y * s, x * s + y * c);
+  }
+
+  /// 二維外積（純量）
+  double cross(V2 o) => x * o.y - y * o.x;
   @override
   String toString() => '(${x.toStringAsFixed(1)}, ${y.toStringAsFixed(1)})';
 }
 
 const double kMinute = 60;
 const double kHour = 3600;
-const double kDay = 86400;
-const double kYear = 365.25 * kDay;
+
+/// 角度差，結果在 (-π, π]
+double wrapAngle(double a) {
+  var x = a % (2 * math.pi);
+  if (x > math.pi) x -= 2 * math.pi;
+  if (x <= -math.pi) x += 2 * math.pi;
+  return x;
+}
 
 /// release 版也會出現在 logcat，CI 用來檢查行為
 void petLog(String msg) {

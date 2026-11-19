@@ -1,47 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'sim/state.dart';
-import 'sim/world.dart';
-import 'ui/pet_world_page.dart';
-import 'ui/setup_page.dart';
-import 'ui/storage.dart';
+import 'overlay/overlay_pet.dart';
+import 'ui/control_page.dart';
 
-Future<void> main() async {
+/// 控制 App：設定貓、權限、讓牠出現／收起來
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  runApp(const PetApp());
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  runApp(const ControlApp());
 }
 
-class PetApp extends StatelessWidget {
-  const PetApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Pet Life',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorSchemeSeed: const Color(0xFFD9712A), useMaterial3: true),
-      home: const _Boot(),
-    );
-  }
+/// 懸浮視窗用的第二個 Flutter 引擎從這裡開始（flutter_overlay_window 依名稱找這個函式）
+@pragma('vm:entry-point')
+void overlayMain() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const OverlayPetApp());
 }
 
-class _Boot extends StatelessWidget {
-  const _Boot();
+class ControlApp extends StatelessWidget {
+  const ControlApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<(PetState, World)?>(
-      future: Store.load(),
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
-        final data = snap.data;
-        if (data == null) return const SetupPage();
-        return PetWorldPage(state: data.$1, world: data.$2);
-      },
-    );
-  }
+  Widget build(BuildContext context) => MaterialApp(
+        title: 'Pet Overlay',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(colorSchemeSeed: const Color(0xFFF2A65A), useMaterial3: true),
+        home: const ControlPage(),
+      );
 }

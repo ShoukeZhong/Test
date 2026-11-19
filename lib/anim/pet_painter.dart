@@ -3,7 +3,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import '../sim/species.dart';
 import '../sim/util.dart';
 import 'rig.dart';
 
@@ -20,46 +19,41 @@ const List<Coat> catCoats = [
   Coat('黑', Color(0xFF2E2E33), Color(0xFF17171A), Color(0xFF5A5B60)),
   Coat('白', Color(0xFFF2EEE6), Color(0xFFD5CBBB), Color(0xFFFFFFFF)),
 ];
-const List<Coat> dogCoats = [
-  Coat('淺棕', Color(0xFFD9A066), Color(0xFFA8733C), Color(0xFFF5E1C4)),
-  Coat('深棕', Color(0xFF8B5A3C), Color(0xFF5E3B26), Color(0xFFC79B7C)),
-  Coat('黑', Color(0xFF2E2E33), Color(0xFF17171A), Color(0xFF8A7A6A)),
-  Coat('白', Color(0xFFF2EEE6), Color(0xFFD5CBBB), Color(0xFFFFFFFF)),
-];
-List<Coat> coatsOf(Species s) => s == Species.dog ? dogCoats : catCoats;
+Coat coatAt(int i) => catCoats[math.min(math.max(i, 0), catCoats.length - 1)];
 
-/// 世界座標 → 螢幕座標（可平移縮放：幼年時鏡頭拉近跟著牠）
+/// 身體座標（單位，y 向上）→ 畫布座標（邏輯像素，y 向下）
 class WorldView {
-  WorldView(this.size, {this.left = 0, this.width = 100}) : s = size.width / width, floorY = size.height * 0.80;
-  final Size size;
-  final double left;
-  final double width;
+  WorldView({required this.s, this.left = 0, required this.floorY});
+
+  /// 置中、讓 [width] 個單位剛好塞滿寬度（預覽、測試用）
+  factory WorldView.fit(Size size, {double left = 0, double width = 100}) =>
+      WorldView(s: size.width / width, left: left, floorY: size.height * 0.8);
+
   final double s;
+  final double left;
   final double floorY;
   Offset p(V2 v) => Offset((v.x - left) * s, floorY - v.y * s);
   V2 w(Offset o) => V2(o.dx / s + left, (floorY - o.dy) / s);
 }
 
-/// 把骨架畫成貓狗。全部用路徑繪製，沒有圖片素材。
+/// 把骨架畫成貓。全部用路徑繪製，沒有圖片素材。
 class PetPainterKit {
-  static void paint(Canvas c, WorldView v, RigFrame r, Coat coat, {double alpha = 1, double dim = 0, double ageDays = 400}) {
+  static void paint(Canvas c, WorldView v, RigFrame r, Coat coat, {double alpha = 1, bool shadow = true}) {
     final s = v.s;
     final f = r.facing;
-    Color tone(Color col) {
-      var out = Color.lerp(col, const Color(0xFFB9B9B9), r.greying * 0.5)!;
-      if (dim > 0) out = Color.lerp(out, const Color(0xFF6E6E6E), dim)!;
-      return out.withValues(alpha: alpha);
-    }
+    Color tone(Color col) => col.withValues(alpha: alpha);
 
     final base = tone(coat.base), dark = tone(coat.dark), light = tone(coat.light);
     final farCol = Color.lerp(base, dark, 0.4)!;
 
-    // 影子
-    final mid = V2.lerp(r.hip, r.shoulder, 0.5);
-    c.drawOval(
-      Rect.fromCenter(center: v.p(V2(mid.x, 0)), width: r.L * 1.1 * s, height: math.max(2.0, r.L * 0.12 * s)),
-      Paint()..color = Colors.black.withValues(alpha: 0.13 * alpha),
-    );
+    // 影子（懸空時由外面依離地高度另外畫）
+    if (shadow) {
+      final mid = V2.lerp(r.hip, r.shoulder, 0.5);
+      c.drawOval(
+        Rect.fromCenter(center: v.p(V2(mid.x, 0)), width: r.L * 1.1 * s, height: math.max(2.0, r.L * 0.12 * s)),
+        Paint()..color = Colors.black.withValues(alpha: 0.13 * alpha),
+      );
+    }
 
     // 尾巴（在身體後面）
     _tail(c, v, r, base, dark);
@@ -133,7 +127,7 @@ class PetPainterKit {
       _leg(c, v, l, r, base);
     }
 
-    _head(c, v, r, base, dark, light, alpha, ageDays);
+    _head(c, v, r, base, dark, light, alpha);
   }
 
   static void _tail(Canvas c, WorldView v, RigFrame r, Color base, Color dark) {
@@ -145,7 +139,7 @@ class PetPainterKit {
         v.p(pts[i]),
         v.p(pts[i + 1]),
         Paint()
-          ..color = r.species == Species.cat && i >= pts.length - 3 ? Color.lerp(base, dark, 0.35)! : base
+          ..color = i >= pts.length - 3 ? Color.lerp(base, dark, 0.35)! : base
           ..strokeCap = StrokeCap.round
           ..strokeWidth = math.max(1.5, w),
       );
@@ -167,29 +161,28 @@ class PetPainterKit {
     );
   }
 
-  static void _head(Canvas c, WorldView v, RigFrame r, Color base, Color dark, Color light, double alpha, double ageDays) {
+  static void _head(Canvas c, WorldView v, RigFrame r, Color base, Color dark, Color light, double alpha) {
     final s = v.s;
     final R = r.headR * s;
     final center = v.p(r.head);
     final f = r.facing;
     final side = f >= 0 ? 1.0 : -1.0;
     final turn = r.headTurn;
-    final isCat = r.species == Species.cat;
 
     c.save();
     c.translate(center.dx, center.dy);
     c.rotate(-r.tilt * side);
 
     // 耳朵
-    final earH = R * (isCat ? 0.85 : 0.75) * r.earScale;
+    final earH = R * 0.85 * r.earScale;
     for (final k in [-1.0, 1.0]) {
       // 正面：左右對稱；側面：一前一後
       final px = lerpD(side * (k < 0 ? -0.3 : 0.3), k * 0.58, turn) * R;
       final back = r.earsBack * 0.9 + r.earTwitch * (k > 0 ? 1 : 0);
       c.save();
       c.translate(px, -R * 0.62);
-      c.rotate(-side * back * (isCat ? 1 : 0.4) + (turn * k * 0.25));
-      if (isCat) {
+      c.rotate(-side * back + (turn * k * 0.25));
+      {
         final ear = Path()
           ..moveTo(-R * 0.3, R * 0.15)
           ..lineTo(0, -earH)
@@ -202,8 +195,6 @@ class PetPainterKit {
           ..lineTo(R * 0.15, R * 0.05)
           ..close();
         c.drawPath(inner, Paint()..color = const Color(0xFFE9A6A6).withValues(alpha: 0.8 * alpha));
-      } else {
-        c.drawOval(Rect.fromLTWH(-R * 0.2, 0, R * 0.42, earH * 1.3), Paint()..color = dark);
       }
       c.restore();
     }
@@ -212,19 +203,19 @@ class PetPainterKit {
     c.drawOval(Rect.fromCenter(center: Offset.zero, width: R * 2.1, height: R * 1.9), Paint()..color = base);
 
     // 口鼻：側面在前方，正面在中下
-    final snoutLen = isCat ? 0.35 : 0.85;
+    const snoutLen = 0.35;
     final muzzle = Offset(lerpD(side * R * (0.7 + snoutLen * 0.4), 0, turn), R * lerpD(0.28, 0.42, turn));
-    final mw = R * lerpD(0.75 + snoutLen * 0.6, 0.95, turn), mh = R * (isCat ? 0.55 : 0.7);
-    c.drawOval(Rect.fromCenter(center: muzzle, width: mw, height: mh), Paint()..color = isCat ? light : Color.lerp(base, light, 0.5)!);
+    final mw = R * lerpD(0.75 + snoutLen * 0.6, 0.95, turn), mh = R * 0.55;
+    c.drawOval(Rect.fromCenter(center: muzzle, width: mw, height: mh), Paint()..color = light);
     final nose = muzzle + Offset(lerpD(side * mw * 0.42, 0, turn), -mh * 0.2);
-    final noseR = R * (isCat ? 0.1 : 0.16);
+    final noseR = R * 0.1;
     c.drawPath(
       Path()
         ..moveTo(nose.dx - noseR, nose.dy - noseR * 0.5)
         ..lineTo(nose.dx + noseR, nose.dy - noseR * 0.5)
         ..lineTo(nose.dx, nose.dy + noseR * 0.7)
         ..close(),
-      Paint()..color = (isCat ? const Color(0xFFD9787F) : const Color(0xFF231F20)).withValues(alpha: alpha),
+      Paint()..color = const Color(0xFFD9787F).withValues(alpha: alpha),
     );
     if (r.mouth > 0.04) {
       final mo = nose + Offset(0, noseR * 1.4 + r.mouth * R * 0.12);
@@ -235,7 +226,7 @@ class PetPainterKit {
             Paint()..color = const Color(0xFFE88A93).withValues(alpha: alpha));
       }
     }
-    if (isCat) {
+    {
       final wp = Paint()
         ..color = Colors.white.withValues(alpha: 0.55 * alpha)
         ..strokeWidth = 1;
@@ -247,9 +238,8 @@ class PetPainterKit {
       }
     }
 
-    // 眼睛：小時候藍灰色，之後轉成成年眼色〔查證：幼貓一開始都是藍灰色眼睛〕
-    final irisAdult = isCat ? const Color(0xFFB7C24A) : const Color(0xFF6B4423);
-    final iris = Color.lerp(const Color(0xFF7D93A8), irisAdult, clampD((ageDays - 42) / 60, 0, 1))!;
+    // 眼睛（成貓眼色）
+    const iris = Color(0xFFB7C24A);
     final ew = R * 0.34, eh = R * 0.4;
     final eyeA = Offset(lerpD(side * R * 0.55, R * 0.42, turn), -R * 0.08);
     final eyeB = Offset(lerpD(side * R * 0.55, -R * 0.42, turn), -R * 0.08);
@@ -271,9 +261,7 @@ class PetPainterKit {
       c.clipPath(Path()..addOval(rect));
       c.drawOval(rect, Paint()..color = iris.withValues(alpha: a));
       final g = Offset(r.gaze.x * side * ew * 0.18, -r.gaze.y * h * 0.15);
-      final pupilRect = isCat
-          ? Rect.fromCenter(center: pos + g, width: ew * 0.9 * r.pupil, height: eh * 0.92)
-          : Rect.fromCenter(center: pos + g, width: ew * (0.4 + 0.3 * r.pupil), height: ew * (0.4 + 0.3 * r.pupil));
+      final pupilRect = Rect.fromCenter(center: pos + g, width: ew * 0.9 * r.pupil, height: eh * 0.92);
       c.drawOval(pupilRect, Paint()..color = const Color(0xFF111111).withValues(alpha: a));
       c.drawCircle(pos + g + Offset(-ew * 0.15, -h * 0.2), ew * 0.09, Paint()..color = Colors.white.withValues(alpha: 0.85 * a));
       c.restore();

@@ -1,34 +1,27 @@
-import 'species.dart';
 import 'util.dart';
 
 /// 個性（0..1，0.5 = 一般）。對應 Feline Five：
-/// activity≈Extraversion、sociability≈Agreeableness、fearfulness≈Neuroticism、impulsiveness≈Impulsiveness；
-/// appetite 是本 app 自訂。
+/// activity≈Extraversion、sociability≈Agreeableness、fearfulness≈Neuroticism、impulsiveness≈Impulsiveness。
 class Traits {
   Traits({
     required this.activity,
     required this.sociability,
     required this.fearfulness,
     required this.impulsiveness,
-    required this.appetite,
   });
 
   double activity;
   double sociability;
   double fearfulness;
   double impulsiveness;
-  double appetite;
 
-  factory Traits.base(Species s) => s == Species.dog
-      ? Traits(activity: 0.65, sociability: 0.7, fearfulness: 0.35, impulsiveness: 0.5, appetite: 0.6)
-      : Traits(activity: 0.45, sociability: 0.45, fearfulness: 0.45, impulsiveness: 0.5, appetite: 0.5);
+  factory Traits.base() => Traits(activity: 0.45, sociability: 0.45, fearfulness: 0.45, impulsiveness: 0.5);
 
   Map<String, double> toJson() => {
         'activity': activity,
         'sociability': sociability,
         'fearfulness': fearfulness,
         'impulsiveness': impulsiveness,
-        'appetite': appetite,
       };
 
   factory Traits.fromJson(Map<String, dynamic> m) => Traits(
@@ -36,7 +29,6 @@ class Traits {
         sociability: (m['sociability'] as num).toDouble(),
         fearfulness: (m['fearfulness'] as num).toDouble(),
         impulsiveness: (m['impulsiveness'] as num).toDouble(),
-        appetite: (m['appetite'] as num).toDouble(),
       );
 
   double get(String k) => toJson()[k]!;
@@ -50,8 +42,6 @@ class Traits {
         fearfulness += d;
       case 'impulsiveness':
         impulsiveness += d;
-      case 'appetite':
-        appetite += d;
     }
   }
 
@@ -60,7 +50,6 @@ class Traits {
     sociability = _r(clampD(sociability, 0.05, 0.95));
     fearfulness = _r(clampD(fearfulness, 0.05, 0.95));
     impulsiveness = _r(clampD(impulsiveness, 0.05, 0.95));
-    appetite = _r(clampD(appetite, 0.05, 0.95));
   }
 
   static double _r(double v) => (v * 100).round() / 100;
@@ -82,8 +71,6 @@ const List<_Rule> _rules = [
   _Rule(['勇敢', '大膽', '膽大', '淡定', '穩定', '天不怕'], 'fearfulness', -0.3),
   _Rule(['好奇', '調皮', '搗蛋', '衝動', '暴衝', '手賤', '拆家', '调皮'], 'impulsiveness', 0.3),
   _Rule(['穩重', '乖', '安靜', '溫和', '聽話', '佛系'], 'impulsiveness', -0.25),
-  _Rule(['貪吃', '愛吃', '嘴饞', '吃貨', '胖', '贪吃'], 'appetite', 0.3),
-  _Rule(['挑食', '食量小', '不愛吃', '吃很少'], 'appetite', -0.3),
 ];
 
 class _Hit {
@@ -95,8 +82,8 @@ class _Hit {
 }
 
 /// 描述文字 → 個性（本地關鍵字規則，成本 0）。回傳 (traits, 認出的詞)。
-(Traits, List<String>) compileTraits(Species species, String text) {
-  final t = Traits.base(species);
+(Traits, List<String>) compileTraits(String text) {
+  final t = Traits.base();
   final hits = <_Hit>[];
   for (final r in _rules) {
     for (final kw in r.kw) {

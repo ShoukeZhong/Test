@@ -1,8 +1,7 @@
 import 'dart:math' as math;
 
-import '../sim/life.dart';
+import '../sim/cat.dart';
 import '../sim/motor.dart';
-import '../sim/species.dart';
 import '../sim/util.dart';
 import 'spring.dart';
 
@@ -19,11 +18,29 @@ const Map<Posture, _PostureTarget> _postures = {
   Posture.lie: _PostureTarget(0.24, 0.24, 0.12, 0.6, 0.6, 0.15, 1),
   Posture.curl: _PostureTarget(0.2, 0.2, 1.0, 1, 1, 0, 0.6),
   Posture.crouch: _PostureTarget(0.5, 0.62, 0, 0.35, 0.45, 0, 0),
-  Posture.squat: _PostureTarget(0.8, 0.42, 0.15, 0, 0.55, 0, 0),
   Posture.stretch: _PostureTarget(0.32, 1.0, -0.15, 0, 0, 1, 0),
   Posture.dip: _PostureTarget(0.78, 1.0, 0, 0, 0, 0, 0),
-  Posture.dead: _PostureTarget(0.18, 0.18, 0.2, 0.5, 0.5, 0.3, 1),
 };
+
+/// 身體在世界中的狀態（由懸浮視窗的物理決定，見 overlay/pet_body.dart）。
+/// 骨架永遠在「身體座標」裡計算；被抱起、掉落時整隻貓再旋轉、平移到螢幕上。
+class RigPose {
+  const RigPose({this.angle = 0, this.legsFree = 0, this.tailFree = 0, this.struggle = 0});
+
+  /// 身體相對世界的旋轉（逆時針、弧度）。用來算「重力在身體座標裡往哪個方向」。
+  final double angle;
+
+  /// 0 = 腳踩地；1 = 腳懸空，朝重力方向垂下
+  final double legsFree;
+
+  /// 0 = 一般尾巴；1 = 尾巴朝重力方向垂下
+  final double tailFree;
+
+  /// 0..1 掙扎：腳亂踢
+  final double struggle;
+
+  static const ground = RigPose();
+}
 
 class LegGeom {
   LegGeom(this.joint, this.knee, this.foot, {required this.front, required this.far});
@@ -57,9 +74,6 @@ class RigFrame {
     required this.tailW0,
     required this.tailW1,
     required this.L,
-    required this.growth,
-    required this.greying,
-    required this.species,
   });
   final double facing;
   final V2 hip, shoulder, spineCtrl;
@@ -70,8 +84,13 @@ class RigFrame {
   final double mouth, earsBack, earScale, earTwitch;
   final List<LegGeom> legs;
   final List<V2> tail;
-  final double tailW0, tailW1, L, growth, greying;
-  final Species species;
+  final double tailW0, tailW1, L;
+
+  /// 抱起的位置：胸口（前腳後方）
+  V2 get holdPoint => shoulder + V2(-facing * L * 0.1, -torsoT * 0.05);
+
+  /// 質心（約在背中間）
+  V2 get com => V2.lerp(hip, shoulder, 0.55) + V2(0, torsoT * 0.1);
 }
 
 class _Foot {
@@ -83,7 +102,7 @@ class _Foot {
 }
 
 class PetRig {
-  PetRig(this.species, double x) {
+  PetRig(double x) {
     for (var i = 0; i < 4; i++) {
       _feet.add(_Foot(x));
     }
@@ -93,7 +112,6 @@ class PetRig {
     }
   }
 
-  final Species species;
   final math.Random _rng = math.Random(7);
 
   final Spring shoulderH = Spring(0.3), hipH = Spring(0.3), curl = Spring(0.5);
@@ -102,14 +120,18 @@ class PetRig {
   final Spring headDip = Spring(0), lookViewer = Spring(0), tilt = Spring(0);
   final Spring eyes = Spring(0), mouth = Spring(0), earsBack = Spring(0);
   final Spring tailUp = Spring(0), tailWag = Spring(0), tailLash = Spring(0), tailPuff = Spring(0);
-  final Spring pawLift = Spring(0), knead = Spring(0), dig = Spring(0), wiggle = Spring(0);
-  final Spring pupil = Spring(0.5), gazeX = Spring(0), gazeY = Spring(0), lapS = Spring(0), bobS = Spring(0);
+  final Spring pawLift = Spring(0), knead = Spring(0), wiggle = Spring(0);
+  final Spring pupil = Spring(0.5), gazeX = Spring(0), gazeY = Spring(0), bobS = Spring(0);
+  final Spring legsFreeS = Spring(0), tailFreeS = Spring(0), struggleS = Spring(0);
 
   static const int _tailN = 8;
   final List<Spring> _kneeX = List.generate(4, (_) => Spring(0));
   final List<Spring> _kneeY = List.generate(4, (_) => Spring(0));
   bool _kneeInit = false;
   final List<V2?> _footPrev = List<V2?>.filled(4, null);
+  final List<Spring> _hangX = List.generate(4, (_) => Spring(0));
+  final List<Spring> _hangY = List.generate(4, (_) => Spring(0));
+  bool _hangInit = false;
 
   /// 除錯：腳掌速度上限被觸發的次數與最大超出量（正常應該很少）
   int footClamps = 0;
@@ -129,14 +151,40 @@ class PetRig {
 
   RigFrame? last;
 
-  RigFrame update(double dt, MotorIntent it, double x, double vx, LifeInfo life, {double fear = 0, double brightness = 0.5}) {
+  /// 身體座標整體平移（落地時把身體座標對齊到螢幕位置用；畫面上不會有任何變化）
+  void rebase(double dx) {
+    if (dx == 0) return;
+    final d = V2(dx, 0);
+    for (final ft in _feet) {
+      ft.x += dx;
+      ft.sFrom += dx;
+      ft.sTo += dx;
+    }
+    for (var i = 0; i < 4; i++) {
+      final fp = _footPrev[i];
+      if (fp != null) _footPrev[i] = fp + d;
+      _kneeX[i].x += dx;
+      _hangX[i].x += dx;
+    }
+    for (var i = 0; i < _tail.length; i++) {
+      _tail[i] = _tail[i] + d;
+      _tailPrev[i] = _tailPrev[i] + d;
+    }
+    _prevBase = _prevBase + d;
+  }
+
+  RigFrame update(double dt, MotorIntent it, double x, double vx, {double fear = 0, double brightness = 0.5, RigPose pose = RigPose.ground}) {
     dt = clampD(dt, 0, 0.05);
     time += dt;
-    final sp = infoOf(species);
-    final g = life.growth;
-    final L = sp.bodyLength * g;
-    final legH = sp.legLength * g * life.legRatio;
+    const g = 1.0;
+    const L = CatBody.bodyLength;
+    const legH = CatBody.legLength;
     final moving = vx.abs() > 1.5;
+    legsFreeS.update(pose.legsFree, 0.08, dt);
+    tailFreeS.update(pose.tailFree, 0.1, dt);
+    struggleS.update(pose.struggle, 0.15, dt);
+    // 重力方向（身體座標）：身體逆時針轉 angle，世界的「下」在身體座標是 (-sin, -cos)
+    final gB = V2(-math.sin(pose.angle), -math.cos(pose.angle));
 
     // ---- 姿勢彈簧 ----
     final pt = _postures[it.posture]!;
@@ -154,9 +202,7 @@ class PetRig {
     lookViewer.update(it.lookAtViewer, 0.2, dt);
     tilt.update(it.headTilt, 0.2, dt);
     eyes.update(it.eyes, 0.12, dt);
-    final chew = it.chew > 0 ? 0.12 + 0.12 * math.sin(time * 11) : 0.0;
-    final lap = it.lap > 0 ? 0.18 : 0.0;
-    mouth.update(math.max(it.mouth, math.max(chew, lap)), 0.05, dt);
+    mouth.update(it.mouth, 0.05, dt);
     earsBack.update(it.earsBack, 0.08, dt);
     tailUp.update(it.tailUp, 0.25, dt);
     tailWag.update(it.tailWag, 0.3, dt);
@@ -164,7 +210,6 @@ class PetRig {
     tailPuff.update(it.tailPuff, 0.08, dt);
     pawLift.update(it.pawLift, 0.09, dt);
     knead.update(it.knead, 0.3, dt);
-    dig.update(it.dig, 0.15, dt);
     wiggle.update(it.wiggle, 0.15, dt);
     // 瞳孔：暗處、害怕、玩耍時放大；亮處縮成細縫（貓）
     final play = it.wiggle > 0 || it.pawLift > 0.5 ? 0.3 : 0.0;
@@ -184,7 +229,7 @@ class PetRig {
       _nextTwitch = 3 + _rng.nextDouble() * 6;
     }
     _twitch = math.max(0.0, _twitch - dt);
-    final baseHz = (it.eyes < 0.2 ? 0.33 : 0.42) * (1 + 0.6 * math.exp(-life.days / 30));
+    final baseHz = it.eyes < 0.2 ? 0.33 : 0.42; // 每秒呼吸次數〔估〕
     _breath += dt * 2 * math.pi * baseHz * it.breath;
     final chest = 1 + 0.035 * math.sin(_breath) * math.min(1, it.breath);
 
@@ -202,7 +247,7 @@ class PetRig {
     final spineCtrl = V2(mid.x, mid.y + T * 0.15 + c * L * 0.22 - reach.x * T * 0.2);
 
     // ---- 頭 ----
-    final headR = L * (species == Species.dog ? 0.17 : 0.19) * life.headRatio;
+    const headR = L * 0.19;
     final neck = shoulder + V2(f * L * 0.06, T * 0.5);
     var head = neck + V2(f * L * 0.14, L * 0.15 * (0.6 + 0.4 * shoulderH.x));
     final dipHead = V2(shoulder.x + f * L * 0.26, headR * 0.95);
@@ -211,8 +256,6 @@ class PetRig {
     head = V2.lerp(head, curlHead, c * 0.85);
     final lieHead = V2(shoulder.x + f * L * 0.22, headR * 1.05);
     head = V2.lerp(head, lieHead, lie.x * (1 - c) * 0.6);
-    lapS.update(it.lap, 0.1, dt);
-    head = head + V2(0, math.sin(time * 14) * headR * 0.08 * lapS.x);
     final turn = clampD(math.max(lookViewer.x, 1 - f.abs()), 0, 1);
 
     // 視線
@@ -269,9 +312,6 @@ class PetRig {
       if (front) {
         final k = knead.x * (math.sin(time * 4 + (far ? math.pi : 0))).clamp(0.0, 1.0);
         fy += k * legH * 0.12;
-        final d = dig.x * math.sin(time * 10 + (far ? math.pi : 0));
-        fx -= f * d * L * 0.06;
-        fy += dig.x * math.max(0.0, d) * legH * 0.3;
         if (!far && pawLift.x > 0.01) {
           final toFace = clampD(hindTuck.x * (1 - frontTuck.x), 0, 1);
           final batPos = V2(j.x + f * L * 0.22, legH * 0.75);
@@ -281,10 +321,20 @@ class PetRig {
           fy = lerpD(fy, target.y, pawLift.x);
         }
       }
-      if (life.wobble > 0 && moving) {
-        fy += math.max(0.0, math.sin(time * 7 + i)) * legH * 0.08 * life.wobble;
-      }
       var foot = V2(fx, math.max(0.0, fy));
+      // 懸空：腳朝重力方向垂下（有彈簧延遲），掙扎時亂踢
+      final reachLen = legH * 1.12 * (front ? 0.84 : 0.92);
+      final perpG = V2(-gB.y, gB.x);
+      final paddle = math.sin(time * 9 + i * 1.7) * legH * 0.3 * struggleS.x;
+      final hangT = j + gB * reachLen + perpG * paddle;
+      if (!_hangInit) {
+        _hangX[i].x = hangT.x;
+        _hangY[i].x = hangT.y;
+      }
+      _hangX[i].update(hangT.x, 0.05, dt);
+      _hangY[i].update(hangT.y, 0.05, dt);
+      final lf = legsFreeS.x;
+      if (lf > 1e-4) foot = V2.lerp(foot, V2(_hangX[i].x, _hangY[i].x), clampD(lf, 0, 1));
       // 最後保險：腳掌每幀最多比身體多移動 2.2 單位，保證畫面不會跳
       final fp = _footPrev[i];
       if (fp != null) {
@@ -310,19 +360,25 @@ class PetRig {
     }
 
     _kneeInit = true;
+    _hangInit = true;
 
     // ---- 尾巴（鏈條物理） ----
-    final tailLen = L * (species == Species.dog ? 0.6 : 0.95);
+    const tailLen = L * 0.95;
     final seg = tailLen / _tailN;
     final base = hip + V2(-f * L * 0.08, T * 0.35);
     final up = tailUp.x;
     var ang = lerpD(-0.35, up >= 0 ? 1.35 : -1.2, up.abs()); // 0 = 水平往後
+    final tf = clampD(tailFreeS.x, 0, 1);
+    if (tf > 1e-4 && f.abs() > 0.05) {
+      final hangAng = math.atan2(gB.y, -f * gB.x); // 讓尾巴方向 (-f·cos a, sin a) = 重力方向
+      ang += wrapAngle(hangAng - ang) * tf;
+    }
     final targets = <V2>[];
     var p = base;
     for (var i = 0; i < _tailN; i++) {
       final k = (i + 1) / _tailN;
       final upCurve = lerpD(0.12, -0.18 * up, smooth01((up - 0.1) / 0.4)); // 尾巴越翹，尾端越往前勾（連續）
-      final curve = upCurve * (1 - c) + c * -0.38;
+      final curve = (upCurve * (1 - c) + c * -0.38) * (1 - tf);
       ang += curve;
       final wag = math.sin(time * 16 - i * 0.5) * 0.5 * tailWag.x * k;
       final lash = math.sin(time * 3.5 - i * 0.35) * 0.55 * tailLash.x * k;
@@ -358,7 +414,6 @@ class PetRig {
       prev = nxt;
     }
 
-    final daysEars = clampD((life.days - 5) / 20, 0, 1);
     final fr = RigFrame(
       facing: f,
       hip: hip,
@@ -376,16 +431,13 @@ class PetRig {
       gaze: V2(gazeX.x, gazeY.x),
       mouth: clampD(mouth.x, 0, 1),
       earsBack: clampD(earsBack.x, 0, 1),
-      earScale: 0.45 + 0.55 * daysEars,
+      earScale: 1,
       earTwitch: _twitch > 0 ? math.sin(_twitch * 60) * 0.15 : 0,
       legs: legs,
       tail: List<V2>.unmodifiable([base, ..._tail]),
       tailW0: T * 0.2 * (1 + 1.4 * tailPuff.x),
       tailW1: T * 0.09 * (1 + 1.4 * tailPuff.x),
       L: L,
-      growth: g,
-      greying: life.greying,
-      species: species,
     );
     last = fr;
     return fr;

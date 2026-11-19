@@ -38,10 +38,26 @@ jobs:
           import re, pathlib
           p = pathlib.Path("android/app/src/main/AndroidManifest.xml")
           s = p.read_text(encoding="utf-8")
-          perms = ['CAMERA', 'RECORD_AUDIO', 'VIBRATE']
-          add = ''.join(f'<uses-permission android:name="android.permission.{x}"/>\n    ' for x in perms if x not in s)
+          perms = ['CAMERA', 'RECORD_AUDIO', 'VIBRATE', 'SYSTEM_ALERT_WINDOW', 'POST_NOTIFICATIONS',
+                   'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_SPECIAL_USE',
+                   'FOREGROUND_SERVICE_MICROPHONE', 'FOREGROUND_SERVICE_CAMERA']
+          add = ''.join(f'<uses-permission android:name="android.permission.{x}"/>\n    ' for x in perms
+                        if f'android.permission.{x}"' not in s)
           s = s.replace("<application", add + "<application", 1)
-          s = s.replace('android:label="pet_overlay"', 'android:label="Pet Life"')
+          # 懸浮視窗的前景服務：specialUse 一定有；麥克風／相機要在 manifest 宣告，實際用哪些由
+          # packages/flutter_overlay_window 的 startForegroundWithTypes() 依已授權的權限決定
+          if "OverlayService" not in s:
+              service = (
+                  '    <service android:name="flutter.overlay.window.flutter_overlay_window.OverlayService"\n'
+                  '            android:exported="false"\n'
+                  '            android:foregroundServiceType="specialUse|microphone|camera">\n'
+                  '            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"\n'
+                  '                android:value="Animated pet companion shown over other apps"/>\n'
+                  '        </service>\n'
+                  '    '
+              )
+              s = s.replace("</application>", service + "</application>", 1)
+          s = s.replace('android:label="pet_overlay"', 'android:label="Pet Overlay"')
           p.write_text(s, encoding="utf-8")
           pathlib.Path("ci-out/AndroidManifest.xml").write_text(s, encoding="utf-8")
           for g in ["android/app/build.gradle.kts", "android/app/build.gradle"]:
@@ -80,7 +96,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: steps.build.outcome == 'success'
         with:
-          name: pet-life-apk
+          name: pet-overlay-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
       # ---- 模擬器實測 ----
