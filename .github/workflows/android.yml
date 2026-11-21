@@ -123,12 +123,18 @@ jobs:
       - name: Run on emulator
         id: emu
         if: steps.build.outcome == 'success'
+        timeout-minutes: 30
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
           target: google_apis
           arch: x86_64
           profile: pixel_6 # 1080x2400、420 dpi，和一般手機接近（預設 AVD 只有 320x640）
+          # 3D（Flutter GPU）在預設的 swiftshader_indirect 下會讓模擬器整個當掉（本專案 CI 實測），
+          # 該翻譯層也會漏掉大部分光照。改用 flutter_scene 自己 CI 的設定：ANGLE 跑在 SwiftShader Vulkan 上，
+          # 並固定模擬器 36.1.9（37.x 的 SwANGLE 會在 App 跑幾幀後當掉；見 flutter_scene 的 smoke_render_jobs.yml）
+          emulator-build: 13823996
+          emulator-options: -no-window -gpu swangle_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           script: bash ci/emulator_test.sh
 
       # ---- 把結果寫回 repo 的 ci-results 分支，讓 Claude 能直接讀 ----
