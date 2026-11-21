@@ -1,0 +1,4 @@
+11-21 14:29:31.293 I/flutter ( 4322): [pet] perf look=3d fps=22.3 ui50=0.4 ui90=27.7 rs50=146.9 rs90=649.0 ms cur=900mA lvl=100% chg=true sleepy=true win=small
+11-21 14:29:48.125 I/flutter ( 4322): [pet] perf look=3d fps=22.0 ui50=4.6 ui90=77.3 rs50=217.4 rs90=554.9 ms cur=900mA lvl=100% chg=true sleepy=true win=small
+11-21 14:29:58.711 I/flutter ( 4322): [pet] perf look=3d fps=19.8 ui50=2.1 ui90=32.6 rs50=131.9 rs90=366.7 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:30:09.960 I/flutter ( 4322): [pet] perf look=3d fps=24.8 ui50=4.5 ui90=43.6 rs50=199.7 rs90=402.2 ms cur=900mA lvl=100% chg=true sleepy=false win=small

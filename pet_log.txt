@@ -1,0 +1,127 @@
+11-21 14:26:07.988 I/flutter ( 4322): [pet] overlay shown
+11-21 14:26:09.043 I/flutter ( 4322): [pet] overlay shown 咪咪 size=1 density=2.625 screen=411x914dp status=49 nav=24 sdk=34
+11-21 14:26:09.201 I/flutter ( 4322): [pet] window -> small 63,810 135x84
+11-21 14:26:09.322 I/flutter ( 4322): [pet] window small ready 135x84
+11-21 14:26:15.011 I/flutter ( 4322): [pet] tick look=2d act=rest mode=ground win=small x=65.2 vx=0.0 back=340,2279 head=411,2241 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:26:23.838 I/flutter ( 4322): [pet] tick look=2d act=rest mode=ground win=small x=65.2 vx=0.0 back=339,2279 head=415,2238 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:26:24.296 I/flutter ( 4322): [pet] perf look=2d fps=18.0 ui50=0.6 ui90=5.5 rs50=242.0 rs90=462.2 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:26:28.305 I/flutter ( 4322): [pet] tick look=2d act=rest mode=ground win=small x=65.2 vx=0.0 back=339,2279 head=415,2238 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:26:33.000 I/flutter ( 4322): [pet] tick look=2d act=rest mode=ground win=small x=65.2 vx=0.0 back=339,2279 head=415,2238 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:26:33.116 I/flutter ( 4322): [pet] perf look=2d fps=26.5 ui50=0.5 ui90=12.2 rs50=3.3 rs90=324.7 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:26:35.472 I/flutter ( 4322): [pet] tick look=2d act=rest mode=ground win=small x=65.2 vx=0.0 back=339,2279 head=415,2238 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:26:37.738 I/flutter ( 4322): [pet] act=sleep
+11-21 14:26:38.316 I/flutter ( 4322): [pet] tick look=2d act=sleep mode=ground win=small x=64.5 vx=-8.2 back=338,2276 head=365,2237 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:26:38.635 I/flutter ( 4322): [pet] perf look=2d fps=21.1 ui50=0.6 ui90=28.5 rs50=3.7 rs90=149.9 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:26:43.442 I/flutter ( 4322): [pet] tick look=2d act=sleep mode=ground win=small x=53.3 vx=-10.8 back=283,2257 head=201,2229 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:26:48.253 I/flutter ( 4322): [pet] perf look=2d fps=24.3 ui50=0.9 ui90=6.0 rs50=7.2 rs90=349.7 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:26:48.253 I/flutter ( 4322): [pet] tick look=2d act=sleep mode=ground win=small x=42.5 vx=-10.8 back=226,2259 head=144,2231 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:26:53.207 I/flutter ( 4322): [pet] tick look=2d act=sleep mode=ground win=small x=31.7 vx=-10.8 back=169,2256 head=88,2229 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:26:57.838 I/flutter ( 4322): [pet] perf look=2d fps=23.1 ui50=0.8 ui90=11.1 rs50=70.9 rs90=334.3 ms cur=900mA lvl=100% chg=true sleepy=true win=small
+11-21 14:26:57.847 I/flutter ( 4322): [pet] tick look=2d act=sleep mode=ground win=small x=26.8 vx=0.0 back=143,2289 head=107,2287 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:26:59.125 I/flutter ( 4322): [pet] touch down mode=pet region=head
+11-21 14:26:59.139 I/flutter ( 4322): [pet] touch stroke region=head speed=217
+11-21 14:26:59.158 I/flutter ( 4322): [pet] act=petted
+11-21 14:26:59.160 I/flutter ( 4322): [pet] swat (pleasure=0.00 overstim=0.00)
+11-21 14:26:59.975 I/flutter ( 4322): [pet] touch down mode=pet region=head
+11-21 14:27:00.226 I/flutter ( 4322): [pet] touch stroke region=head speed=114
+11-21 14:27:01.009 I/flutter ( 4322): [pet] touch down mode=pet region=back
+11-21 14:27:01.122 I/flutter ( 4322): [pet] touch stroke region=head speed=44
+11-21 14:27:01.126 I/flutter ( 4322): [pet] purr haptic on
+11-21 14:27:01.458 I/flutter ( 4322): [pet] purr haptic off
+11-21 14:27:01.770 I/flutter ( 4322): [pet] tick look=2d act=petted mode=ground win=small x=26.8 vx=0.0 back=143,2293 head=84,2278 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:27:04.866 I/flutter ( 4322): [pet] perf look=2d fps=24.3 ui50=0.8 ui90=5.1 rs50=20.4 rs90=268.3 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:27:05.060 I/flutter ( 4322): [pet] tick look=2d act=petted mode=ground win=small x=26.8 vx=0.0 back=143,2292 head=68,2272 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:27:05.083 I/flutter ( 4322): [pet] act=groom
+11-21 14:27:08.270 I/flutter ( 4322): [pet] tick look=2d act=groom mode=ground win=small x=26.8 vx=0.0 back=143,2279 head=65,2261 fear=0.00 fatigue=0.38 (physical px)
+11-21 14:27:09.682 I/flutter ( 4322): [pet] touch down mode=pet region=cheek
+11-21 14:27:09.706 I/flutter ( 4322): [pet] touch poke
+11-21 14:27:10.284 I/flutter ( 4322): [pet] perf look=2d fps=19.5 ui50=0.6 ui90=4.2 rs50=82.9 rs90=227.7 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:27:10.599 I/flutter ( 4322): [pet] tick look=2d act=groom mode=ground win=small x=26.8 vx=0.0 back=143,2279 head=66,2246 fear=0.14 fatigue=0.38 (physical px)
+11-21 14:27:13.248 I/flutter ( 4322): [pet] tick look=2d act=groom mode=ground win=small x=26.8 vx=0.0 back=143,2279 head=67,2244 fear=0.12 fatigue=0.38 (physical px)
+11-21 14:27:15.970 I/flutter ( 4322): [pet] perf look=2d fps=25.8 ui50=0.5 ui90=11.1 rs50=4.5 rs90=167.5 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:27:16.098 I/flutter ( 4322): [pet] tick look=2d act=groom mode=ground win=small x=26.8 vx=0.0 back=143,2279 head=65,2261 fear=0.09 fatigue=0.38 (physical px)
+11-21 14:27:17.854 I/flutter ( 4322): [pet] touch down mode=pet region=back
+11-21 14:27:18.322 I/flutter ( 4322): [pet] grab at 27.2,10.0
+11-21 14:27:18.322 I/flutter ( 4322): [pet] act=held
+11-21 14:27:18.326 I/flutter ( 4322): [pet] window -> full 0,0 411x914
+11-21 14:27:19.029 I/flutter ( 4322): [pet] window full ready 411x914
+11-21 14:27:20.175 I/flutter ( 4322): [pet] tick look=2d act=held mode=held win=full x=26.8 vx=0.0 back=168,1456 head=142,1377 fear=0.23 fatigue=0.38 (physical px)
+11-21 14:27:23.781 I/flutter ( 4322): [pet] perf look=2d fps=26.8 ui50=0.5 ui90=6.1 rs50=36.3 rs90=252.1 ms cur=900mA lvl=100% chg=true sleepy=false win=full
+11-21 14:27:24.557 I/flutter ( 4322): [pet] tick look=2d act=held mode=held win=full x=26.8 vx=0.0 back=154,881 head=183,800 fear=0.23 fatigue=0.38 (physical px)
+11-21 14:27:28.559 I/flutter ( 4322): [pet] tick look=2d act=held mode=held win=full x=26.8 vx=0.0 back=149,882 head=188,805 fear=0.23 fatigue=0.38 (physical px)
+11-21 14:27:28.800 I/flutter ( 4322): [pet] release v=-4,0 angle=-1.72
+11-21 14:27:32.123 I/flutter ( 4322): [pet] perf look=2d fps=22.4 ui50=0.6 ui90=5.3 rs50=68.6 rs90=271.2 ms cur=900mA lvl=100% chg=true sleepy=false win=full
+11-21 14:27:32.567 I/flutter ( 4322): [pet] landed impact=538 tilt=-0.00
+11-21 14:27:32.580 I/flutter ( 4322): [pet] tick look=2d act=held mode=ground win=full x=25.9 vx=1.7 back=139,2261 head=57,2233 fear=0.23 fatigue=0.39 (physical px)
+11-21 14:27:32.735 I/flutter ( 4322): [pet] act=land
+11-21 14:27:33.923 I/flutter ( 4322): [pet] act=startle
+11-21 14:27:35.342 I/flutter ( 4322): [pet] window -> small -6,810 135x84
+11-21 14:27:36.056 I/flutter ( 4322): [pet] window small ready 135x84
+11-21 14:27:37.255 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=39.5 vx=42.0 back=205,2279 head=285,2259 fear=0.60 fatigue=0.39 (physical px)
+11-21 14:27:41.077 I/flutter ( 4322): [pet] perf look=2d fps=23.1 ui50=1.0 ui90=8.8 rs50=29.3 rs90=332.2 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:27:42.257 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=99.6 vx=60.0 back=520,2279 head=602,2259 fear=0.59 fatigue=0.39 (physical px)
+11-21 14:27:44.546 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=161.5 vx=59.1 back=845,2280 head=927,2260 fear=0.57 fatigue=0.39 (physical px)
+11-21 14:27:47.503 I/flutter ( 4322): [pet] perf look=2d fps=21.3 ui50=0.7 ui90=3.6 rs50=23.7 rs90=224.8 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:27:47.938 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2282 head=868,2262 fear=0.56 fatigue=0.39 (physical px)
+11-21 14:27:49.869 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2282 head=856,2262 fear=0.55 fatigue=0.39 (physical px)
+11-21 14:27:51.210 I/flutter ( 4322): [pet] perf look=2d fps=22.0 ui50=0.8 ui90=5.7 rs50=6.7 rs90=161.8 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:27:51.514 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2282 head=856,2262 fear=0.53 fatigue=0.39 (physical px)
+11-21 14:27:53.665 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2289 head=859,2269 fear=0.52 fatigue=0.39 (physical px)
+11-21 14:27:55.064 I/flutter ( 4322): [pet] perf look=2d fps=25.3 ui50=0.6 ui90=3.7 rs50=5.3 rs90=97.5 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:27:55.322 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.51 fatigue=0.39 (physical px)
+11-21 14:27:58.357 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.50 fatigue=0.39 (physical px)
+11-21 14:28:01.869 I/flutter ( 4322): [pet] perf look=2d fps=27.5 ui50=0.5 ui90=5.2 rs50=58.8 rs90=262.4 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:28:02.432 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.49 fatigue=0.39 (physical px)
+11-21 14:28:06.513 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.48 fatigue=0.39 (physical px)
+11-21 14:28:10.344 I/flutter ( 4322): [pet] perf look=2d fps=20.8 ui50=0.5 ui90=3.6 rs50=176.2 rs90=318.0 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:28:11.087 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.47 fatigue=0.39 (physical px)
+11-21 14:28:15.347 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.46 fatigue=0.39 (physical px)
+11-21 14:28:19.254 I/flutter ( 4322): [pet] perf look=2d fps=20.3 ui50=0.5 ui90=2.1 rs50=175.5 rs90=319.8 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:28:19.987 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.45 fatigue=0.39 (physical px)
+11-21 14:28:25.136 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.44 fatigue=0.39 (physical px)
+11-21 14:28:27.677 I/flutter ( 4322): [pet] perf look=2d fps=23.1 ui50=0.4 ui90=2.9 rs50=162.4 rs90=319.5 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:28:28.775 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.43 fatigue=0.39 (physical px)
+11-21 14:28:33.070 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.42 fatigue=0.39 (physical px)
+11-21 14:28:36.394 I/flutter ( 4322): [pet] perf look=2d fps=20.7 ui50=0.4 ui90=2.3 rs50=157.2 rs90=330.2 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:28:37.591 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.41 fatigue=0.39 (physical px)
+11-21 14:28:41.714 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.40 fatigue=0.39 (physical px)
+11-21 14:28:45.608 I/flutter ( 4322): [pet] perf look=2d fps=20.2 ui50=0.4 ui90=2.1 rs50=153.7 rs90=309.6 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:28:46.936 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.39 fatigue=0.39 (physical px)
+11-21 14:28:51.210 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.38 fatigue=0.39 (physical px)
+11-21 14:28:53.922 I/flutter ( 4322): [pet] perf look=2d fps=19.5 ui50=0.5 ui90=1.3 rs50=167.8 rs90=298.2 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:28:55.582 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.37 fatigue=0.40 (physical px)
+11-21 14:28:59.604 I/flutter ( 4322): [pet] tick look=2d act=startle mode=ground win=small x=178.2 vx=0.0 back=938,2292 head=862,2272 fear=0.36 fatigue=0.40 (physical px)
+11-21 14:29:01.107 I/flutter ( 4322): [pet] act=sleep
+11-21 14:29:02.392 I/flutter ( 4322): [pet] perf look=2d fps=23.8 ui50=0.4 ui90=2.5 rs50=130.0 rs90=283.0 ms cur=900mA lvl=100% chg=true sleepy=true win=small
+11-21 14:29:04.193 I/flutter ( 4322): [pet] tick look=2d act=sleep mode=ground win=small x=178.4 vx=0.0 back=938,2299 head=920,2298 fear=0.36 fatigue=0.40 (physical px)
+11-21 14:29:08.775 I/flutter ( 4322): [pet] tick look=2d act=sleep mode=ground win=small x=178.4 vx=0.0 back=938,2301 head=934,2303 fear=0.35 fatigue=0.40 (physical px)
+11-21 14:29:12.255 I/flutter ( 4322): [pet] perf look=2d fps=20.7 ui50=0.3 ui90=0.7 rs50=167.4 rs90=397.5 ms cur=900mA lvl=100% chg=true sleepy=true win=small
+11-21 14:29:13.554 I/flutter ( 4322): [pet] tick look=2d act=sleep mode=ground win=small x=178.4 vx=0.0 back=938,2301 head=934,2303 fear=0.34 fatigue=0.40 (physical px)
+11-21 14:29:15.424 I/flutter ( 4322): [pet] look -> 3d
+11-21 14:29:15.500 I/flutter ( 4322): [pet] profile updated traits={activity: 0.45, sociability: 0.45, fearfulness: 0.45, impulsiveness: 0.5} scale=2.0
+11-21 14:29:17.962 I/flutter ( 4322): [pet] 3d ready in 2537 ms joints=22 clips=Survey,Walk,Run
+11-21 14:29:17.963 I/flutter ( 4322): [pet] tick look=3d act=sleep mode=ground win=small x=178.4 vx=0.0 back=920,2214 head=1014,2233 fear=0.33 fatigue=0.40 (physical px)
+11-21 14:29:31.293 I/flutter ( 4322): [pet] perf look=3d fps=22.3 ui50=0.4 ui90=27.7 rs50=146.9 rs90=649.0 ms cur=900mA lvl=100% chg=true sleepy=true win=small
+11-21 14:29:39.295 I/flutter ( 4322): [pet] tick look=3d act=sleep mode=ground win=small x=178.4 vx=0.0 back=953,2219 head=855,2229 fear=0.32 fatigue=0.40 (physical px)
+11-21 14:29:44.858 I/flutter ( 4322): [pet] tick look=3d act=sleep mode=ground win=small x=178.4 vx=0.0 back=953,2220 head=853,2230 fear=0.32 fatigue=0.40 (physical px)
+11-21 14:29:48.125 I/flutter ( 4322): [pet] perf look=3d fps=22.0 ui50=4.6 ui90=77.3 rs50=217.4 rs90=554.9 ms cur=900mA lvl=100% chg=true sleepy=true win=small
+11-21 14:29:50.148 I/flutter ( 4322): [pet] tick look=3d act=sleep mode=ground win=small x=178.4 vx=0.0 back=953,2218 head=853,2228 fear=0.31 fatigue=0.40 (physical px)
+11-21 14:29:55.433 I/flutter ( 4322): [pet] tick look=3d act=sleep mode=ground win=small x=178.4 vx=0.0 back=953,2220 head=856,2229 fear=0.30 fatigue=0.40 (physical px)
+11-21 14:29:56.074 I/flutter ( 4322): [pet] touch down mode=pet region=back
+11-21 14:29:56.079 I/flutter ( 4322): [pet] touch stroke region=head speed=1295
+11-21 14:29:56.329 I/flutter ( 4322): [pet] act=petted
+11-21 14:29:56.330 I/flutter ( 4322): [pet] swat (pleasure=-0.24 overstim=0.00)
+11-21 14:29:56.993 I/flutter ( 4322): [pet] touch down mode=pet region=back
+11-21 14:29:57.212 I/flutter ( 4322): [pet] touch stroke region=head speed=3311
+11-21 14:29:57.813 I/flutter ( 4322): [pet] touch down mode=pet region=back
+11-21 14:29:58.711 I/flutter ( 4322): [pet] perf look=3d fps=19.8 ui50=2.1 ui90=32.6 rs50=131.9 rs90=366.7 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:30:01.159 I/flutter ( 4322): [pet] tick look=3d act=petted mode=ground win=small x=178.4 vx=0.0 back=954,2218 head=856,2230 fear=0.30 fatigue=0.40 (physical px)
+11-21 14:30:03.740 I/flutter ( 4322): [pet] act=affection
+11-21 14:30:06.844 I/flutter ( 4322): [pet] tick look=3d act=affection mode=ground win=small x=171.0 vx=-18.0 back=916,2221 head=816,2237 fear=0.29 fatigue=0.40 (physical px)
+11-21 14:30:09.960 I/flutter ( 4322): [pet] perf look=3d fps=24.8 ui50=4.5 ui90=43.6 rs50=199.7 rs90=402.2 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:30:12.452 I/flutter ( 4322): [pet] tick look=3d act=affection mode=ground win=small x=152.4 vx=-18.0 back=818,2221 head=718,2237 fear=0.28 fatigue=0.40 (physical px)
+11-21 14:30:20.514 I/flutter ( 4322): [pet] tick look=3d act=affection mode=ground win=small x=133.8 vx=-18.0 back=720,2218 head=618,2240 fear=0.28 fatigue=0.40 (physical px)
+11-21 14:30:24.452 I/flutter ( 4322): [pet] perf look=3d fps=21.3 ui50=2.1 ui90=48.4 rs50=293.6 rs90=499.0 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:30:27.575 I/flutter ( 4322): [pet] tick look=3d act=affection mode=ground win=small x=115.8 vx=-18.0 back=626,2220 head=524,2237 fear=0.27 fatigue=0.40 (physical px)
+11-21 14:30:30.452 I/flutter ( 4322): [pet] overlay closed by user
+11-21 14:30:31.101 I/flutter ( 4322): [pet] overlay hidden

@@ -1,0 +1,11 @@
+11-21 14:29:55.433 I/flutter ( 4322): [pet] tick look=3d act=sleep mode=ground win=small x=178.4 vx=0.0 back=953,2220 head=856,2229 fear=0.30 fatigue=0.40 (physical px)
+11-21 14:29:56.074 I/flutter ( 4322): [pet] touch down mode=pet region=back
+11-21 14:29:56.079 I/flutter ( 4322): [pet] touch stroke region=head speed=1295
+11-21 14:29:56.329 I/flutter ( 4322): [pet] act=petted
+11-21 14:29:56.330 I/flutter ( 4322): [pet] swat (pleasure=-0.24 overstim=0.00)
+11-21 14:29:56.993 I/flutter ( 4322): [pet] touch down mode=pet region=back
+11-21 14:29:57.212 I/flutter ( 4322): [pet] touch stroke region=head speed=3311
+11-21 14:29:57.813 I/flutter ( 4322): [pet] touch down mode=pet region=back
+11-21 14:29:58.711 I/flutter ( 4322): [pet] perf look=3d fps=19.8 ui50=2.1 ui90=32.6 rs50=131.9 rs90=366.7 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+11-21 14:30:01.159 I/flutter ( 4322): [pet] tick look=3d act=petted mode=ground win=small x=178.4 vx=0.0 back=954,2218 head=856,2230 fear=0.30 fatigue=0.40 (physical px)
+11-21 14:30:03.740 I/flutter ( 4322): [pet] act=affection

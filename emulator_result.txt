@@ -1,0 +1,13 @@
+PASS T1 overlay shown
+PASS T2 cat visible over launcher and animating (2296 351 2269)
+PASS T3 stroke -> petted (touch stroke region=head)
+PASS T4 tap -> poke
+PASS T5 picked up (y=914), dropped and landed (y=1698)
+PASS T6 cat floats over another app
+INFO T7 mic switch not found
+PASS T9 3D renderer loaded (3d ready in 2537 ms joints=22 clips=Survey,Walk,Run)
+PASS T9 3D cat visible over launcher and animating (46165 556 946)
+PASS T9s stroke -> petted (touch stroke region=head)
+INFO T9 2D perf: look=2d fps=19.5 ui50=0.5 ui90=1.3 rs50=167.8 rs90=298.2 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+INFO T9 3D perf: look=3d fps=24.8 ui50=4.5 ui90=43.6 rs50=199.7 rs90=402.2 ms cur=900mA lvl=100% chg=true sleepy=false win=small
+PASS T8 hide works

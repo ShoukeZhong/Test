@@ -1,0 +1,7 @@
+commit: 91553edc4a10c6fd33e26403ad4d5cde3d5b7e7a
+branch: pet-life
+run: https://github.com/ShoukeZhong/Test/actions/runs/44912955643
+analyze: success
+unit: success
+build: success
+emulator: success

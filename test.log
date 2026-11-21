@@ -1,0 +1,71 @@
+00:00 +0: loading /home/runner/work/Test/Test/test/rig_test.dart
+00:00 +0: /home/runner/work/Test/Test/test/rig_test.dart: 彈簧：目標突變時位置連續、最後收斂
+00:00 +1: /home/runner/work/Test/Test/test/sim_test.dart: 個性描述 典型描述
+00:00 +2: /home/runner/work/Test/Test/test/rig_test.dart: 骨架：亂切姿勢與目標，每幀位移都很小（畫面連續）
+00:00 +3: /home/runner/work/Test/Test/test/rig_test.dart: 骨架：亂切姿勢與目標，每幀位移都很小（畫面連續）
+00:00 +4: /home/runner/work/Test/Test/test/rig_test.dart: 骨架：亂切姿勢與目標，每幀位移都很小（畫面連續）
+00:00 +4: /home/runner/work/Test/Test/test/sim_test.dart: 即時行為 親人的貓被摸頭會呼嚕
+[pet] act=petted
+00:00 +5: /home/runner/work/Test/Test/test/rig_test.dart: 骨架：亂切姿勢與目標，每幀位移都很小（畫面連續）
+00:00 +5: /home/runner/work/Test/Test/test/sim_test.dart: 即時行為 一直摸高冷貓的肚子會被揮爪然後走開
+[pet] act=petted
+[pet] swat (pleasure=0.06 overstim=0.00)
+[pet] act=explore
+[pet] act=affection
+[pet] act=groom
+00:00 +6: /home/runner/work/Test/Test/test/rig_test.dart: 骨架：亂切姿勢與目標，每幀位移都很小（畫面連續）
+00:00 +6: /home/runner/work/Test/Test/test/sim_test.dart: 即時行為 膽小的貓聽到巨響會受驚
+[pet] act=startle
+00:00 +7: /home/runner/work/Test/Test/test/rig_test.dart: 骨架：亂切姿勢與目標，每幀位移都很小（畫面連續）
+00:00 +7: /home/runner/work/Test/Test/test/sim_test.dart: 即時行為 在旁邊滑手指，牠會進入追手指
+[pet] act=hunt
+[pet] pounce
+00:00 +8: /home/runner/work/Test/Test/test/rig_test.dart: 骨架：亂切姿勢與目標，每幀位移都很小（畫面連續）
+00:00 +8: /home/runner/work/Test/Test/test/sim_test.dart: 即時行為 被抱起：膽小的會掙扎，黏人的比較放鬆
+[pet] act=held
+[pet] meow (held, struggle=0.59)
+[pet] act=held
+00:00 +9: /home/runner/work/Test/Test/test/rig_test.dart: 骨架：亂切姿勢與目標，每幀位移都很小（畫面連續）
+00:00 +9: /home/runner/work/Test/Test/test/sim_test.dart: 即時行為 重重摔下：膽小的貓落地後逃開；輕輕放下就沒事
+[pet] act=held
+[pet] act=land
+[pet] act=startle
+[pet] act=held
+[pet] act=land
+[pet] act=affection
+00:00 +10: /home/runner/work/Test/Test/test/rig_test.dart: 骨架：亂切姿勢與目標，每幀位移都很小（畫面連續）
+worst: head @frame 686 posture=sit legsFree=0.0 facing=0.36 vx=-8.2 | foot speed limiter used 94x, max excess 12.93
+ground worst body=3.076171888083234 tailTip=3.155204702362888
+00:00 +11: /home/runner/work/Test/Test/test/rig_test.dart: 骨架：在地上、被抱著、懸空之間亂切，也一樣連續
+worst: footHN @frame 1122 posture=stand legsFree=0.0 facing=-1.00 vx=-21.5 | foot speed limiter used 214x, max excess 11.85
+poses worst body=2.5583333333333313 tailTip=3.0309563971928433
+00:00 +12: /home/runner/work/Test/Test/test/rig_test.dart: rebase：身體座標平移後，之後每一幀都只是整體平移（看不出差別）
+00:00 +13: /home/runner/work/Test/Test/test/body_test.dart: 抱起來：身體會晃到「質心在手指正下方」，而且不會穿過地板
+[pet] grab at 99.5,10.0
+[pet] act=held
+hang angle=1.71 com-hold dx=-0.00 worstRel=1.55 (point 10 during stand (mode=ground)) lowest=0.50
+00:00 +14: /home/runner/work/Test/Test/test/body_test.dart: 放手：掉下來、翻正、四腳著地，落地後慢慢回到正常
+[pet] grab at 106.2,10.0
+[pet] act=held
+[pet] release v=2,-0 angle=1.70
+[pet] landed impact=332 tilt=0.01
+[pet] act=land
+[pet] act=groom
+landed after 0.62s tilt=0.01 impact=332
+00:00 +15: /home/runner/work/Test/Test/test/body_test.dart: 甩出去、撞牆、落地、走開：整段畫面連續，位置不跳
+[pet] grab at 106.2,10.0
+[pet] act=held
+[pet] release v=283,8 angle=1.00
+[pet] landed impact=310 tilt=0.00
+[pet] act=land
+[pet] act=startle
+throw worstRel=2.06 (point 0 during after (mode=ground)) lowest=0.50 act=startle
+00:01 +16: /home/runner/work/Test/Test/test/body_test.dart: 半空中接住
+[pet] grab at 106.2,10.0
+[pet] act=held
+[pet] release v=2,-0 angle=1.69
+[pet] grab at 106.4,182.0
+00:04 +17: /home/runner/work/Test/Test/test/window_camera_test.dart: 螢幕平面（z=0）上的點：全螢幕和小視窗投影到同一個螢幕位置，也和 2D 的換算一致
+00:04 +18: /home/runner/work/Test/Test/test/window_camera_test.dart: 比螢幕遠的點會往消失點靠、變小；toScreen 和矩陣投影一致
+00:04 +19: /home/runner/work/Test/Test/test/window_camera_test.dart: 深度：近平面到遠平面在合理範圍、貓所在的深度不會被裁掉
+00:04 +20: All tests passed!

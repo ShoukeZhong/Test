@@ -1,0 +1,32 @@
+[emu] install
+Performing Streamed Install
+Success
+Physical size: 1080x2400
+Physical density: 420
+[emu] screen 1080x2400
+      draganddrop <x1> <y1> <x2> <y2> [duration(ms)] (Default: touchscreen)
+      motionevent <DOWN|UP|MOVE|CANCEL> <x> <y> (Default: touchscreen)
+[emu] T1 launch control app
+[emu] tap '2D 手繪' at 291 1160
+[emu] tap '讓牠出現在螢幕上' at 540 852
+[emu] T2 home screen
+[emu] frame diff home a/b = 254 px
+[emu] T3 stroke the back
+11-21 14:26:57.847 I/flutter ( 4322): [pet] tick look=2d act=sleep mode=ground win=small x=26.8 vx=0.0 back=143,2289 head=107,2287 fear=0.00 fatigue=0.38 (physical px)
+[emu] T3 back at 143,2289 swipe to 63 (look=2d)
+[emu] T4 poke the head
+11-21 14:27:08.270 I/flutter ( 4322): [pet] tick look=2d act=groom mode=ground win=small x=26.8 vx=0.0 back=143,2279 head=65,2261 fear=0.00 fatigue=0.38 (physical px)
+[emu] T5 long-press, lift, release
+11-21 14:27:16.098 I/flutter ( 4322): [pet] tick look=2d act=groom mode=ground win=small x=26.8 vx=0.0 back=143,2279 head=65,2261 fear=0.09 fatigue=0.38 (physical px)
+[emu] grab at 143,2279
+[emu] centroid y held=914 landed=1698
+[emu] window back to small
+[emu] T6 another app (dialer)
+[emu] T7 microphone switch (info)
+[emu] T9 switch to 3D
+[emu] tap '3D 實驗' at 789 1286
+[emu] frame diff 3d a/b = 2256984 px
+11-21 14:29:50.148 I/flutter ( 4322): [pet] tick look=3d act=sleep mode=ground win=small x=178.4 vx=0.0 back=953,2218 head=853,2228 fear=0.31 fatigue=0.40 (physical px)
+[emu] T9s back at 953,2218 swipe to 753 (look=3d)
+[emu] T8 hide
+[emu] tap '收起來' at 540 852
