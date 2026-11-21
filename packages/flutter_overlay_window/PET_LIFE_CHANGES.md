@@ -10,6 +10,6 @@
 其他新增（全部標了 `[Pet Life 新增]` / `[Pet Life 修改]`）：
 - `OverlayService`：
   - `pet_overlay/touch`（BasicMessageChannel）：把每個觸控事件的螢幕座標（dp）送給 Dart。視窗一直跟著貓移動，只用視窗內座標會互相干擾。
-  - `pet_overlay/window`（MethodChannel）：`metrics`（螢幕與系統列大小）、`place`（直接設定視窗位置／大小，dp，不做原版的邊界修正）、`haptic`（呼嚕震動 25 Hz、拍打、輕點）。
+  - `pet_overlay/window`（MethodChannel）：`metrics`（螢幕與系統列大小）、`place`（直接設定視窗位置／大小，dp，不做原版的邊界修正）、`haptic`（呼嚕震動 25 Hz、拍打、輕點）、`power`（BatteryManager 瞬間電流與電量，用來比較 2D／3D 耗電）。
   - `onDestroy` 時通知懸浮引擎 `appIsPaused`，停止動畫與感測。
 - `FlutterOverlayWindowPlugin`：`petCheckRuntime` / `petRequestRuntime`（麥克風、相機、通知權限）、`petOpenAppSettings`、`petSdkInt`。

@@ -14,6 +14,7 @@ class PetProfile {
     this.size = 1,
     this.mic = false,
     this.camera = false,
+    this.look = 1,
   });
 
   String name;
@@ -24,6 +25,10 @@ class PetProfile {
   int size;
   bool mic;
   bool camera;
+
+  /// 外觀：0 = 2D 手繪、1 = 3D（可行性實驗；手機不支援時自動退回 2D）
+  int look;
+  static const List<String> lookLabels = ['2D 手繪', '3D 實驗'];
 
   /// 每個世界單位在螢幕上幾 dp
   static const List<double> scales = [1.5, 2.0, 2.6];
@@ -39,6 +44,7 @@ class PetProfile {
         'size': size,
         'mic': mic,
         'camera': camera,
+        'look': look,
       };
 
   factory PetProfile.fromJson(Map<String, dynamic> m) => PetProfile(
@@ -48,6 +54,7 @@ class PetProfile {
         size: (m['size'] as num?)?.toInt() ?? 1,
         mic: m['mic'] as bool? ?? false,
         camera: m['camera'] as bool? ?? false,
+        look: (m['look'] as num?)?.toInt() ?? 1,
       );
 }
 

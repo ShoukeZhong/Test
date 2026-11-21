@@ -57,6 +57,11 @@ jobs:
                   '    '
               )
               s = s.replace("</application>", service + "</application>", 1)
+          # 3D（flutter_scene）需要 Flutter GPU；Android 在 <application> 裡加這個 meta-data
+          # （flutter_scene README「Enable Flutter GPU」）。懸浮視窗的引擎在同一個行程，同樣生效。
+          if "EnableFlutterGPU" not in s:
+              s = s.replace("</application>",
+                            '    <meta-data android:name="io.flutter.embedding.android.EnableFlutterGPU" android:value="true" />\n    </application>', 1)
           s = s.replace('android:label="pet_overlay"', 'android:label="Pet Overlay"')
           p.write_text(s, encoding="utf-8")
           pathlib.Path("ci-out/AndroidManifest.xml").write_text(s, encoding="utf-8")

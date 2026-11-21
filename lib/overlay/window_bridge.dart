@@ -101,4 +101,19 @@ class WindowBridge {
       return false;
     });
   }
+
+  /// 瞬間電流（µA，正負號依廠商而異）與電量；量不到時回傳 null
+  Future<({int currentUa, int level, bool charging})?> power() async {
+    try {
+      final r = await _window.invokeMapMethod<String, dynamic>('power');
+      if (r == null || r['currentUa'] == null) return null;
+      return (
+        currentUa: (r['currentUa'] as num).toInt(),
+        level: (r['level'] as num?)?.toInt() ?? -1,
+        charging: r['charging'] as bool? ?? false,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
 }

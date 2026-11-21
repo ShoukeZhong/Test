@@ -795,6 +795,9 @@ public class OverlayService extends Service implements View.OnTouchListener {
                         petHaptic((String) call.argument("kind"));
                         result.success(true);
                         break;
+                    case "power":
+                        result.success(petPower());
+                        break;
                     default:
                         result.notImplemented();
                 }
@@ -803,6 +806,19 @@ public class OverlayService extends Service implements View.OnTouchListener {
                 result.error("PET", String.valueOf(e), null);
             }
         });
+    }
+
+    // 耗電量測：BatteryManager 的瞬間電流（µA）。正負號依廠商而異、充電中沒有意義，
+    // 只拿來比較 2D／3D 的相對差異。
+    private Map<String, Object> petPower() {
+        Map<String, Object> m = new HashMap<>();
+        android.os.BatteryManager bm = (android.os.BatteryManager) getSystemService(BATTERY_SERVICE);
+        if (bm != null) {
+            m.put("currentUa", bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_NOW));
+            m.put("level", bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) m.put("charging", bm.isCharging());
+        }
+        return m;
     }
 
     private float petDensity() {

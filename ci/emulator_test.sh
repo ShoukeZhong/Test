@@ -8,6 +8,9 @@
 #  T6 打開別的 App（撥號）→ 貓還在上面
 #  T7 打開麥克風開關（資訊）
 #  T8 按「收起來」→ 懸浮視窗消失
+#  3D 實驗（預設外觀是 3D）：
+#  T0 3D 引擎（flutter_scene／Flutter GPU）在懸浮視窗裡載入成功
+#  T9 切回 2D，比較兩者的每秒幀數與每幀時間（模擬器數字只當參考，實機才準）
 set -u
 OUT=ci-out
 PKG=com.joker.pet_overlay
@@ -114,6 +117,15 @@ else
 fi
 sleep 3; shot 2_after_show
 
+# ---- T0（3D）----
+if wait_log '3d ready' 25; then
+  result "PASS T0 3D renderer ready ($(plog | grep -oE '3d ready.*' | tail -1))"
+elif plog | grep -q '3d unavailable'; then
+  result "FAIL T0 3D unavailable: $(plog | grep -oE '3d unavailable.*' | tail -1 | cut -c1-300)"
+else
+  result "FAIL T0 3D never reported"
+fi
+
 # ---- T2 ----
 log "T2 home screen"
 adb shell input keyevent KEYCODE_HOME; sleep 4; dismiss_dialogs; sleep 2; shot 3_home_a; sleep 6; shot 4_home_b
@@ -208,6 +220,23 @@ else
   result "INFO T7 mic switch not found"
 fi
 adb shell dumpsys vibrator_manager 2>/dev/null | grep -i -A2 "$PKG" | head -20 > "$OUT/vibrator.txt" || true
+
+# ---- T9（3D vs 2D 效能）----
+log "T9 perf 3D vs 2D"
+plog | grep -E '\] perf look=3d' > "$OUT/perf_3d.txt"
+launch; sleep 4
+for k in 1 2; do adb shell input swipe $((SW / 2)) $((SH * 2 / 10)) $((SW / 2)) $((SH * 8 / 10)) 300; done; sleep 1   # 捲回最上面
+shot 9_control_perf
+if tap_label "2D 手繪" t9; then
+  sleep 2
+  adb shell input keyevent KEYCODE_HOME; sleep 12; dismiss_dialogs; shot 10_home_2d
+  plog | grep -E '\] perf look=2d' > "$OUT/perf_2d.txt"
+  result "INFO T9 3D: $(tail -1 "$OUT/perf_3d.txt" | sed 's/.*perf //')"
+  result "INFO T9 2D: $(tail -1 "$OUT/perf_2d.txt" | sed 's/.*perf //')"
+  if pet_seen 10_home_2d; then result "PASS T9 switched to 2D and cat still visible"; else result "FAIL T9 cat not visible after switching to 2D"; fi
+else
+  result "FAIL T9 look switch not found"
+fi
 
 # ---- T8 ----
 log "T8 hide"

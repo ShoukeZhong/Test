@@ -10,6 +10,7 @@ import '../sim/cat.dart';
 import '../sim/motor.dart';
 import '../sim/profile.dart';
 import '../sim/util.dart';
+import '../three/credits.dart';
 import 'permissions.dart';
 import 'storage.dart';
 
@@ -28,17 +29,26 @@ class _ControlPageState extends State<ControlPage> with WidgetsBindingObserver {
   final TextEditingController _name = TextEditingController();
   final TextEditingController _persona = TextEditingController();
   Timer? _saveDebounce;
+  StreamSubscription<dynamic>? _overlaySub;
+  final Map<String, Map<dynamic, dynamic>> _perf = {}; // '2d' / '3d' → 懸浮視窗最近一次回報
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _overlaySub = FlutterOverlayWindow.overlayListener.listen(_onOverlayMessage);
     _load();
+  }
+
+  void _onOverlayMessage(dynamic msg) {
+    if (msg is! Map || msg['type'] != 'perf' || !mounted) return;
+    setState(() => _perf[msg['look'] as String? ?? '2d'] = msg);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _overlaySub?.cancel();
     _saveDebounce?.cancel();
     _name.dispose();
     _persona.dispose();
@@ -207,6 +217,22 @@ class _ControlPageState extends State<ControlPage> with WidgetsBindingObserver {
                 : '按下按鈕後，貓會出現在手機畫面最下面，蓋在其他 App 上面。',
             style: theme.textTheme.bodySmall,
           ),
+          const SizedBox(height: 16),
+          Text('外觀', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 6),
+          SegmentedButton<int>(
+            segments: [
+              for (var i = 0; i < PetProfile.lookLabels.length; i++) ButtonSegment(value: i, label: Text(PetProfile.lookLabels[i])),
+            ],
+            selected: {p.look},
+            onSelectionChanged: (v) {
+              p.look = v.first;
+              _changed();
+            },
+          ),
+          const SizedBox(height: 6),
+          ..._perfLines(theme),
+          if (p.look == 1) Text(foxCredit, style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor)),
           const Divider(height: 32),
           TextField(
             controller: _name,
@@ -289,6 +315,31 @@ class _ControlPageState extends State<ControlPage> with WidgetsBindingObserver {
         ],
       ),
     );
+  }
+
+  /// 懸浮視窗回報的效能：每秒幀數、每幀計算時間（中位數／慢的那 10%）、電流
+  List<Widget> _perfLines(ThemeData theme) {
+    String ms(Object? v) => v is num ? v.toStringAsFixed(1) : '-';
+    final out = <Widget>[];
+    for (final look in ['3d', '2d']) {
+      final r = _perf[look];
+      if (r == null) continue;
+      final mA = r['mA'];
+      final power = mA is num ? '｜電流 ${mA.abs().round()} mA${r['charging'] == true ? '（充電中，不準）' : ''}' : '';
+      out.add(Text(
+        '${look.toUpperCase()} 實測：每秒 ${ms(r['fps'])} 幀｜計算 ${ms(r['ui50'])} ms（慢 ${ms(r['ui90'])}）'
+        '｜繪製 ${ms(r['rs50'])} ms（慢 ${ms(r['rs90'])}）$power${r['sleepy'] == true ? '｜睡覺中' : ''}',
+        style: theme.textTheme.bodySmall,
+      ));
+    }
+    final err = _perf['2d']?['err'];
+    if (err is String && _p?.look == 1) {
+      out.add(Text('這支手機目前不能用 3D，已自動改用 2D：$err', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)));
+    }
+    if (out.isNotEmpty) {
+      out.add(Text('比較耗電：拔掉充電線，3D、2D 各放 1 分鐘，看電流差多少。', style: theme.textTheme.bodySmall));
+    }
+    return out;
   }
 
   Widget _bar(String label, double v) => Padding(

@@ -55,3 +55,17 @@
 - camera 套件：https://pub.dev/packages/camera
 - record 套件：https://pub.dev/packages/record
 - MediaPipe Tasks（之後若要做臉部／手部偵測）：https://developers.google.com/edge/mediapipe/solutions
+
+## 3D 可行性實驗（lib/three/）
+
+- flutter_scene 0.24.x（Flutter GPU 上的 3D 引擎）：https://pub.dev/packages/flutter_scene 、原始碼 https://github.com/bdero/flutter_scene
+  - 需 Flutter 3.47 stable 以上；Android 在 `<application>` 加 `io.flutter.embedding.android.EnableFlutterGPU` meta-data（套件 README「Enable Flutter GPU」）〔官方文件〕
+  - `Scene.skybox` 為 null 時背景清成透明；`ShadowCatcherMaterial` 是只畫影子的隱形地板（`scene.dart`、`material/shadow_catcher_material.dart`）〔原始碼〕
+  - 自訂 `CameraProjection` 會被讀回矩陣、自動反轉深度（`render/depth_raster.dart` 的 `rasterProjectionMatrix`）〔原始碼〕
+  - 父節點的動畫播放器先算、子節點的元件後算（`node.dart` 的 `scenePrePass`），所以掛在頭骨上的元件能在動畫之後再疊轉動〔原始碼〕
+  - `Scene.raycast` 對蒙皮網格只用靜止姿勢（`raycast.dart`），所以觸控改用骨頭投影判斷〔原始碼〕
+- 替身模型 Fox：Khronos glTF Sample Assets，授權見 `assets/models/Fox.LICENSE.md`（CC0＋CC BY 4.0，需標示作者）
+  - 尺寸與步態速度是用 `Fox.glb` 本身算的（本次對話中執行）：尾巴根到鼻尖約 93 模型單位；Walk 0.708 s、Run 1.158 s；腳掌觸地時往後移的速度約 110（走）、220（跑）模型單位／秒 → 播放速度＝貓的速度 ÷ 這個速度，腳不打滑
+- 「螢幕是一扇窗」的投影（off-axis／generalized perspective projection）：Kooima, R. (2008). Generalized Perspective Projection.〔記憶〕。視角 30°：手機在 30 cm 外、螢幕高約 15 cm 時張角約 28°（幾何計算）
+- 耗電：`BatteryManager.BATTERY_PROPERTY_CURRENT_NOW`（瞬間電流，µA；正負號依廠商而異）https://developer.android.com/reference/android/os/BatteryManager
+- 每幀時間：`SchedulerBinding.addTimingsCallback` 的 `FrameTiming.buildDuration`／`rasterDuration`（release 版也有）https://api.flutter.dev/flutter/scheduler/SchedulerBinding/addTimingsCallback.html

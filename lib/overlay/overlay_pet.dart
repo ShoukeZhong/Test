@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show FrameTiming;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import 'package:vector_math/vector_math.dart' as vm;
 
 import '../anim/pet_painter.dart';
 import '../anim/rig.dart';
@@ -15,6 +17,7 @@ import '../sim/cat.dart';
 import '../sim/simulator.dart';
 import '../sim/stimuli.dart';
 import '../sim/util.dart';
+import '../three/pet3d.dart';
 import '../ui/storage.dart';
 import 'pet_body.dart';
 import 'pet_world.dart';
@@ -101,6 +104,18 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
   double _strokeLogT = 0;
   bool _loggedStroke = false;
 
+  // ---- 3D 實驗 ----
+  Pet3D? _p3;
+  bool _p3Loading = false;
+  String? _p3Error;
+  bool get _use3d => profile.look == 1 && _p3 != null;
+  bool _sleepy = false;
+  Offset _touchDp = Offset.zero;
+
+  // ---- 效能紀錄（每 2 秒一次，也送回控制 App 顯示） ----
+  final List<FrameTiming> _timings = [];
+  double _perfT = 0;
+
   // ---- 觸覺、紀錄 ----
   bool _purrOn = false;
   bool _swatBuzzed = false;
@@ -116,6 +131,7 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
     _touchSub = bridge.touches.listen(_onTouch);
     _shownSub = bridge.shown.listen((v) => v ? _onShown() : _onHidden());
     _msgSub = FlutterOverlayWindow.overlayListener.listen(_onMessage);
+    SchedulerBinding.instance.addTimingsCallback(_onTimings);
   }
 
   Future<void> _onShown() async {
@@ -144,7 +160,27 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
     _win = _Win.small;
     _beginTransition(body.mode == CarryMode.ground ? _smallRect() : _fullRect, body.mode == CarryMode.ground ? _Win.small : _Win.full);
     if (!_ticker.isActive) _ticker.start();
+    if (mounted) setState(() {}); // 3D 畫面恢復自動更新
+    _ensure3d();
     await _applySensors();
+  }
+
+  /// 第一次需要 3D 時才載入；這支手機不支援（Flutter GPU 沒開、驅動不行）就記下原因、退回 2D
+  Future<void> _ensure3d() async {
+    if (profile.look != 1 || _p3 != null || _p3Loading || _p3Error != null) return;
+    _p3Loading = true;
+    final sw = Stopwatch()..start();
+    try {
+      final p = await Pet3D.load();
+      _p3 = p;
+      petLog('3d ready in ${sw.elapsedMilliseconds} ms joints=${p.jointCount} clips=${p.clipNames.join(',')}');
+    } catch (e) {
+      _p3Error = '$e';
+      petLog('3d unavailable: $e');
+    } finally {
+      _p3Loading = false;
+    }
+    if (mounted) setState(() {});
   }
 
   /// 視窗被收起（服務停止）：停動畫、麥克風、相機；貓的狀態留著，下次出現接著用
@@ -164,11 +200,13 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
       st.micOn = false;
       st.cameraOn = false;
     }
+    if (mounted) setState(() {}); // 3D 畫面停止自動更新
     petLog('overlay hidden');
   }
 
   @override
   void dispose() {
+    SchedulerBinding.instance.removeTimingsCallback(_onTimings);
     _ticker.dispose();
     _touchSub?.cancel();
     _shownSub?.cancel();
@@ -184,7 +222,13 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
     if (msg is! Map || msg['type'] != 'profile') return;
     final next = PetProfile.fromJson(Map<String, dynamic>.from(msg['data'] as Map));
     final oldS = s;
+    final lookChanged = next.look != profile.look;
     profile = next;
+    if (lookChanged) {
+      petLog('look -> ${next.look == 1 ? '3d' : '2d'}');
+      _ensure3d();
+      setState(() {});
+    }
     final w = world;
     if (w == null) return;
     w.sim.traits = next.traits;
@@ -244,14 +288,83 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
     _f = f;
     _p = p;
     if (body.landImpact > 120) bridge.haptic('tick');
+    if (_use3d) _update3d(dt, sm, f, p);
 
     _updateWindow(dt, f, p);
     _haptics(sm);
     _log(dt, sm, f, p);
+    _perfT += dt;
+    if (_perfT >= 2) {
+      _reportPerf(_perfT);
+      _perfT = 0;
+    }
 
-    // 睡覺時每 4 幀才重畫一次（呼吸很慢），省電
+    // 睡覺時每 4 幀才重畫一次（呼吸很慢），省電；3D 則把每秒幀數降到 20
     final quiet = sm.brain.asleep && _tm == _TouchMode.none && body.mode == CarryMode.ground && !_transition;
+    if (quiet != _sleepy) setState(() => _sleepy = quiet);
     if (!quiet || _frameNo % 4 == 0) _repaint.value++;
+  }
+
+  // ---------------- 3D：把 2D 模擬的位置、方向、速度套到 3D 模型 ----------------
+  void _update3d(double dt, Simulator sm, RigFrame f, Placement p) {
+    final p3 = _p3!;
+    p3.frame(screen: Size(m.width, m.height), floorY: floorY, s: s, window: _win == _Win.full ? _fullRect : _winRect);
+    final place = vm.Matrix4.translationValues(p.pivotW.x, p.pivotW.y, 0)
+        .multiplied(vm.Matrix4.rotationZ(p.angle))
+        .multiplied(vm.Matrix4.translationValues(-p.pivotB.x, -p.pivotB.y, 0));
+    final fx = sm.stim.fingerX;
+    p3.update(
+      dt,
+      place: place,
+      bodyX: (f.hip.x + f.shoulder.x) / 2,
+      facing: f.facing,
+      speed: sm.loco.vx.abs(),
+      grounded: body.mode == CarryMode.ground,
+      asleep: sm.brain.asleep,
+      visible: !_blank,
+      lookAt: fx == null ? null : vm.Vector3(fx, sm.stim.fingerY, 0),
+    );
+  }
+
+  void _onTimings(List<FrameTiming> ts) {
+    _timings.addAll(ts);
+    if (_timings.length > 1000) _timings.removeRange(0, _timings.length - 1000);
+  }
+
+  Future<void> _reportPerf(double secs) async {
+    final ts = List<FrameTiming>.of(_timings);
+    _timings.clear();
+    double q(List<double> v, double at) {
+      if (v.isEmpty) return 0;
+      v.sort();
+      return v[((v.length - 1) * at).round()];
+    }
+
+    final uiMs = [for (final t in ts) t.buildDuration.inMicroseconds / 1000.0];
+    final rsMs = [for (final t in ts) t.rasterDuration.inMicroseconds / 1000.0];
+    final fps = ts.length / secs;
+    final pw = await bridge.power();
+    final look = _use3d ? '3d' : '2d';
+    final r = {
+      'type': 'perf',
+      'look': look,
+      'fps': fps,
+      'ui50': q(uiMs, 0.5),
+      'ui90': q(uiMs, 0.9),
+      'rs50': q(rsMs, 0.5),
+      'rs90': q(rsMs, 0.9),
+      'mA': pw == null ? null : pw.currentUa / 1000.0,
+      'level': pw?.level,
+      'charging': pw?.charging,
+      'sleepy': _sleepy,
+      'err': _p3Error,
+    };
+    petLog('perf look=$look fps=${fps.toStringAsFixed(1)} '
+        'ui50=${(r['ui50'] as double).toStringAsFixed(1)} ui90=${(r['ui90'] as double).toStringAsFixed(1)} '
+        'rs50=${(r['rs50'] as double).toStringAsFixed(1)} rs90=${(r['rs90'] as double).toStringAsFixed(1)} ms '
+        '${pw == null ? 'power=n/a' : 'cur=${(pw.currentUa / 1000).round()}mA lvl=${pw.level}% chg=${pw.charging}'} '
+        'sleepy=$_sleepy win=${_win.name}');
+    FlutterOverlayWindow.shareData(r).catchError((Object _) => false);
   }
 
   // ---------------- 視窗：平常小視窗跟著貓走，抱起／掉落時全螢幕 ----------------
@@ -294,7 +407,7 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
       return;
     }
     // 視窗中心跟著貓的外框中心（平滑）
-    final b = _bbox(f, p);
+    final b = _use3d ? _p3!.screenBounds() : _bbox(f, p);
     final target = (b.left + b.right) / 2;
     if (_win == _Win.full) {
       _winCx.x = target;
@@ -375,6 +488,7 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
     final sm = sim, f = _f;
     if (sm == null || f == null) return;
     final w = toWorld(t.x, t.y);
+    _touchDp = Offset(t.x, t.y);
     final now = _clock.elapsedMilliseconds;
     switch (t.action) {
       case RawTouch.down:
@@ -390,7 +504,7 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
 
   void _down(Simulator sm, RigFrame f, V2 w, int now) {
     if (body.mode == CarryMode.held) return;
-    final region = hitPet(f, _p.unmap(w), pad: math.max(1.3, 1.3 * 2.0 / s));
+    final region = _hit(f, w);
     _downMs = now;
     _lastMoveMs = now;
     _moved = 0;
@@ -425,7 +539,7 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
       case _TouchMode.pet:
         if (!_stroking && _moved > 8) _stroking = true; // 約 Android 的 touch slop（8dp）
         if (_stroking) {
-          final region = hitPet(f, _p.unmap(w), pad: math.max(1.3, 1.3 * 2.0 / s));
+          final region = _hit(f, w);
           sm.stim.touchingPet = region != null;
           if (region != null && dist > 0.02) {
             sm.stim.strokeRegion = region;
@@ -448,6 +562,14 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
     }
     _lastW = w;
     _lastMoveMs = now;
+  }
+
+  /// 摸到哪裡：3D 用骨頭投影到螢幕判斷，2D 用骨架的形狀
+  BodyRegion? _hit(RigFrame f, V2 w) {
+    final pad = math.max(1.3, 1.3 * 2.0 / s);
+    final p3 = _p3;
+    if (_use3d && p3 != null) return p3.hit(_touchDp, pad: pad);
+    return hitPet(f, _p.unmap(w), pad: pad);
   }
 
   void _endTouch(Simulator? sm, {bool cancel = false}) {
@@ -495,15 +617,32 @@ class _OverlayPetState extends State<OverlayPet> with SingleTickerProviderStateM
     }
 
     final back = V2.lerp(f.hip, f.shoulder, 0.5) + V2(0, f.torsoT * 0.3);
-    petLog('tick act=${sm.brain.act.name} mode=${body.mode.name} win=${_win.name} '
-        'x=${sm.loco.x.toStringAsFixed(1)} vx=${sm.loco.vx.toStringAsFixed(1)} back=${px(back)} head=${px(f.head)} '
+    var backPx = px(back), headPx = px(f.head);
+    final p3 = _p3;
+    if (_use3d && p3 != null) {
+      String sp(vm.Vector3 v) {
+        final o = p3.camera.toScreen(v);
+        return '${(o.dx * d).round()},${(o.dy * d).round()}';
+      }
+
+      backPx = sp(p3.backPoint);
+      headPx = sp(p3.headCenter);
+    }
+    petLog('tick look=${_use3d ? '3d' : '2d'} act=${sm.brain.act.name} mode=${body.mode.name} win=${_win.name} '
+        'x=${sm.loco.x.toStringAsFixed(1)} vx=${sm.loco.vx.toStringAsFixed(1)} back=$backPx head=$headPx '
         'fear=${sm.needs.fear.toStringAsFixed(2)} fatigue=${sm.needs.fatigue.toStringAsFixed(2)} (physical px)');
   }
 
   @override
-  Widget build(BuildContext context) => SizedBox.expand(
-        child: CustomPaint(painter: _OverlayPainter(this, _repaint)),
-      );
+  Widget build(BuildContext context) {
+    final p3 = _p3;
+    return SizedBox.expand(
+      child: Stack(children: [
+        if (p3 != null && profile.look == 1) Positioned.fill(child: p3.view(active: !_paused, maxFps: _sleepy ? 20 : null)),
+        Positioned.fill(child: CustomPaint(painter: _OverlayPainter(this, _repaint))),
+      ]),
+    );
+  }
 }
 
 /// 觸控判斷：摸到身體哪裡（身體座標）
@@ -536,7 +675,7 @@ class _OverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final f = st._f;
-    if (f == null || st._blank) return;
+    if (f == null || st._blank || st._use3d) return;
     final origin = st._win == _Win.full ? Offset.zero : st._winRect.topLeft;
     final s = st.s;
     final p = st._p;
