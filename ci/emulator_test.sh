@@ -20,7 +20,8 @@ mkdir -p "$OUT"
 FAILED=0
 
 # 每個 adb 指令都有時限：模擬器卡住時測試要能結束、把已經拿到的結果送出去
-adb() { timeout "${ADB_T:-40}" command adb "$@"; }
+ADB_BIN=$(command -v adb)
+adb() { timeout "${ADB_T:-40}" "$ADB_BIN" "$@"; }
 log() { echo "[emu] $*" | tee -a "$OUT/emulator_steps.txt"; }
 shot() { adb exec-out screencap -p > "$OUT/$1.png"; }
 result() { echo "$1" | tee -a "$OUT/emulator_result.txt"; case "$1" in FAIL*) FAILED=1;; esac; }
@@ -94,7 +95,7 @@ still_line() {
 # 從 tick 紀錄取出身體部位的實體像素座標 "X Y"
 xy_of() { echo "$2" | grep -oE "$1=-?[0-9]+,-?[0-9]+" | head -1 | cut -d= -f2 | tr ',' ' '; }
 
-command adb wait-for-device
+"$ADB_BIN" wait-for-device
 log "install"
 ADB_T=240 adb install -r "$APK" >> "$OUT/emulator_steps.txt" 2>&1 || { result "FAIL install"; exit 1; }
 for p in POST_NOTIFICATIONS RECORD_AUDIO CAMERA; do adb shell pm grant "$PKG" android.permission.$p 2>/dev/null || true; done
@@ -109,7 +110,7 @@ SW=${SIZE%x*}; SH=${SIZE#*x}
 log "screen ${SW}x${SH}"
 adb shell input 2>&1 | grep -iE "motionevent|draganddrop" >> "$OUT/emulator_steps.txt" || true
 adb logcat -c
-command adb logcat -v time > "$OUT/logcat_live.txt" 2>&1 &
+"$ADB_BIN" logcat -v time > "$OUT/logcat_live.txt" 2>&1 &
 LOGCAT_PID=$!
 
 # ---- T1 ----
